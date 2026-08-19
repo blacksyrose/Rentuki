@@ -260,8 +260,7 @@ export default function SubmeterCalculator() {
         <div>
           <h1>Submeter Calculator</h1>
           <p>
-            Calculate shared electricity billing without saving anything to the
-            database.
+            Calculate shared electricity billing.
           </p>
         </div>
         <div className="actions">

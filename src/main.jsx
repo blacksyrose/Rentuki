@@ -13,11 +13,22 @@ import Payments from "./pages/Payments";
 import Maintenance from "./pages/Maintenance";
 import Summary from "./pages/Summary";
 import Receipts from "./pages/Receipts";
-import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import SubmeterCalculator from "./pages/SubmeterCalculator";
 import TenantPortal from "./pages/TenantPortal";
 import "./styles.css";
+import "./styles/login.css";
+import "./styles/tenant-portal.css";
+import "./styles/dashboard.css";
+import "./styles/tenants.css";
+import "./styles/units.css";
+import "./styles/payments.css";
+import "./styles/maintenance.css";
+import "./styles/summary.css";
+import "./styles/receipts.css";
+import "./styles/settings.css";
+import "./styles/submeter-calculator.css";
+import "./styles/consistency.css";
 
 function App() {
   const [session, setSession] = useState(null),
@@ -52,7 +63,6 @@ function App() {
         <Route path="maintenance" element={<Maintenance />} />
         <Route path="summary" element={<Summary />} />
         <Route path="receipts" element={<Receipts />} />
-        <Route path="reports" element={<Reports />} />
         <Route path="submeter-calculator" element={<SubmeterCalculator />} />
         <Route path="settings" element={<Settings />} />
       </Route>

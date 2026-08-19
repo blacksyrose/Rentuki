@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Building2, Droplets, Pencil, Plus, Zap } from "lucide-react";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import { db } from "../services/db";
@@ -28,6 +28,10 @@ export default function Units() {
   const { data, loading, refresh } = useAsync(() => db.units.list(), []);
 
   const props = useAsync(() => db.properties.list(), []);
+
+  // Load active tenancies separately so the redesigned unit cards can show
+  // the current tenant without changing the existing units API.
+  const tenancies = useAsync(() => db.tenancies.list(), []);
 
   const [open, setOpen] = useState(false);
 
@@ -183,14 +187,12 @@ export default function Units() {
   /* ---------------------------------------------------------------------- */
 
   return (
-    <div>
-      <div className="page-head">
+    <div className="units-page">
+      <div className="page-head units-page-head">
         <div>
           <h1>Unit Overview</h1>
-
           <p>
-            Manage unit details, rental defaults, and utility account
-            information.
+            Overview of unit availability, utilities information, and individual rent rates.
           </p>
         </div>
 
@@ -200,143 +202,112 @@ export default function Units() {
         </button>
       </div>
 
-      <section className="unit-grid">
-        {(data || []).map((u) => (
-          <div className="unit-card" key={u.id}>
-            <div className="unit-top">
-              <strong>Unit {u.unit_number}</strong>
+      <section className="unit-grid unit-directory-grid">
+        {(data || []).map((u) => {
+          const activeTenancy = (tenancies.data || []).find(
+            (t) => t.unit_id === u.id && t.status === "active",
+          );
 
-              <StatusBadge status={u.status} />
-            </div>
+          const tenant = activeTenancy?.tenants;
+          const tenantName = tenant
+            ? `${tenant.first_name || ""} ${tenant.last_name || ""}`.trim()
+            : "Vacant";
 
-            <p>{u.unit_type || "Apartment"}</p>
-
-            <div className="unit-price">
-              {money(u.default_rent)}
-
-              <small>/ month default</small>
-            </div>
-
-            <div className="unit-foot">
-              <span>Property</span>
-
-              <span>
-                {props.data?.find((p) => p.id === u.property_id)?.name || "—"}
-              </span>
-            </div>
-
-            {/* -------------------------------------------------------- */}
-            {/* Utility summary                                           */}
-            {/* -------------------------------------------------------- */}
-
-            <div
-              style={{
-                marginTop: "14px",
-                paddingTop: "12px",
-                borderTop: "1px solid var(--border, #e5e7eb)",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  marginBottom: "8px",
-                }}
-              >
-                Utilities
-              </div>
-
-              {/* Electricity */}
-              <div
-                style={{
-                  marginBottom: "10px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    marginBottom: "3px",
-                  }}
-                >
-                  ⚡ Meralco
+          return (
+            <article className="unit-card unit-directory-card" key={u.id}>
+              <div className="unit-card-header">
+                <div className="unit-card-icon">
+                  <Building2 size={18} />
                 </div>
 
-                <div
-                  style={{
-                    fontSize: "12px",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  <div>
-                    <strong>Meter:</strong>{" "}
-                    {u.electricity_meter_type === "submeter"
-                      ? "Submeter"
-                      : "Direct"}
-                  </div>
+                <StatusBadge status={u.status} />
+              </div>
 
-                  <div>
-                    <strong>CAN:</strong> {u.electricity_can || "—"}
-                  </div>
+              <div className="unit-card-title">
+                <span className="unit-number-label">
+                  UNIT {String(u.unit_number).padStart(2, "0")}
+                </span>
+                <h2>{u.unit_type || "Apartment"}</h2>
+              </div>
 
-                  <div>
-                    <strong>Bill Name:</strong> {u.electricity_bill_name || "—"}
-                  </div>
+              <div className="unit-card-divider" />
+
+              <div className="unit-card-meta">
+                <div>
+                  <span>Current tenant</span>
+                  <strong className={tenant ? "" : "is-vacant"}>
+                    {tenantName}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Monthly rent</span>
+                  <strong>
+                    {money(activeTenancy?.monthly_rent ?? u.default_rent)}
+                  </strong>
                 </div>
               </div>
 
-              {/* Water */}
-              <div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    marginBottom: "3px",
-                  }}
-                >
-                  💧 Maynilad
+              <div className="unit-utilities">
+                <div className="unit-utilities-title">
+                  <span>Utilities</span>
                 </div>
 
-                <div
-                  style={{
-                    fontSize: "12px",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  <div>
-                    <strong>CAN:</strong> {u.water_can || "—"}
+                <div className="unit-utility-row">
+                  <div className="unit-utility-name">
+                    <span className="unit-utility-icon electricity">
+                      <Zap size={13} />
+                    </span>
+                    <strong>Meralco</strong>
                   </div>
 
-                  <div>
-                    <strong>Bill Name:</strong> {u.water_bill_name || "—"}
+                  <div className="unit-utility-value">
+                    <span>
+                      {u.electricity_meter_type === "submeter"
+                        ? "Submeter"
+                        : "Direct"}
+                    </span>
+                    <small>{u.electricity_can || "No CAN"}</small>
+                  </div>
+                </div>
+
+                <div className="unit-utility-row">
+                  <div className="unit-utility-name">
+                    <span className="unit-utility-icon water">
+                      <Droplets size={13} />
+                    </span>
+                    <strong>Maynilad</strong>
+                  </div>
+
+                  <div className="unit-utility-value">
+                    <span>{u.water_can || "No CAN"}</span>
+                    <small>{u.water_bill_name || "No bill name"}</small>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* -------------------------------------------------------- */}
-            {/* Edit                                                       */}
-            {/* -------------------------------------------------------- */}
-
-            <div
-              style={{
-                marginTop: "14px",
-              }}
-            >
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => openEdit(u)}
-              >
-                <Pencil size={14} />
-                Edit unit
-              </button>
-            </div>
-          </div>
-        ))}
+              <div className="unit-card-actions">
+                <button
+                  type="button"
+                  className="secondary unit-edit-btn"
+                  onClick={() => openEdit(u)}
+                >
+                  <Pencil size={14} />
+                  Edit unit
+                </button>
+              </div>
+            </article>
+          );
+        })}
 
         {!loading && !data?.length && (
-          <div className="empty panel">No units yet. Add your first unit.</div>
+          <div className="empty panel unit-empty-state">
+            <div className="unit-empty-icon">
+              <Building2 size={21} />
+            </div>
+            <strong>No units yet</strong>
+            <span>Add your first unit to get started.</span>
+          </div>
         )}
       </section>
 
@@ -497,11 +468,11 @@ export default function Units() {
               marginBottom: "-4px",
             }}
           >
-            ⚡ Meralco
+            Meralco
           </div>
 
           <label>
-            Electricity meter type
+            Meter Type
             <select
               value={form.electricity_meter_type}
               onChange={(e) =>
@@ -511,7 +482,7 @@ export default function Units() {
                 })
               }
             >
-              <option value="direct">Direct Meralco Meter</option>
+              <option value="direct">Direct</option>
 
               <option value="submeter">Submeter</option>
             </select>
@@ -532,7 +503,7 @@ export default function Units() {
           </label>
 
           <label className="full-span">
-            Meralco Bill Name
+            Bill Name
             <input
               value={form.electricity_bill_name}
               onChange={(e) =>
@@ -541,7 +512,7 @@ export default function Units() {
                   electricity_bill_name: e.target.value,
                 })
               }
-              placeholder="Name appearing on the Meralco bill"
+              placeholder="Enter Bill Name"
             />
           </label>
 
@@ -555,16 +526,13 @@ export default function Units() {
                 fontSize: "12px",
               }}
             >
-              <strong>Submeter:</strong> This unit does not have its own direct
-              Meralco meter. Store the building/master Meralco CAN and Bill Name
-              here. Unit consumption can be calculated later from its submeter
-              readings.
+              <strong>Submeter:</strong> This unit does not have its own meter.
+              Store the building/master Meralco CAN and Bill Name here. Unit
+              consumption can be calculated later from its submeter readings.
             </div>
           )}
 
-          {/* -------------------------------------------------------------- */}
-          {/* Maynilad                                                       */}
-          {/* -------------------------------------------------------------- */}
+          {/* Maynilad */}
 
           <div
             className="full-span"
@@ -574,8 +542,8 @@ export default function Units() {
               marginTop: "8px",
               marginBottom: "-4px",
             }}
-          >
-            💧 Maynilad
+          >Real-time visual status of unit availability, floor plans, and individual rent rates.
+            Maynilad
           </div>
 
           <label>

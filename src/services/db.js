@@ -20,6 +20,25 @@ function cleanText(value) {
   return text || null;
 }
 
+function normalizePaymentMethod(value) {
+  const method = String(value || "cash")
+    .trim()
+    .toLowerCase();
+
+  if (method === "cash") return "Cash";
+  if (method === "gcash" || method === "g-cash") return "G-Cash";
+
+  if (
+    ["maribank", "bank transfer", "bank_transfer", "maya", "other"].includes(
+      method,
+    )
+  ) {
+    return "Maribank";
+  }
+
+  throw new Error("Payment method must be Cash, G-Cash, or Maribank.");
+}
+
 function toNumber(value, label = "Value") {
   const number = Number(value);
 
@@ -206,39 +225,6 @@ export const db = {
   },
 
   /* ------------------------------------------------------------------------ */
-  /* Tenant Portal                                                            */
-  /* ------------------------------------------------------------------------ */
-
-  tenantPortal: {
-    list: () =>
-      unwrap(
-        supabase.rpc("list_tenant_portal_keys"),
-      ),
-
-    generate: (tenantId) =>
-      unwrap(
-        supabase.rpc("generate_tenant_portal_key", {
-          p_tenant_id: tenantId,
-        }),
-      ),
-
-    revoke: (tenantId) =>
-      unwrap(
-        supabase.rpc("revoke_tenant_portal_key", {
-          p_tenant_id: tenantId,
-        }),
-      ),
-
-    summary: (accessKey, month) =>
-      unwrap(
-        supabase.rpc("get_tenant_monthly_summary", {
-          p_access_key: accessKey,
-          p_month: month ? `${month}-01` : undefined,
-        }),
-      ),
-  },
-
-  /* ------------------------------------------------------------------------ */
   /* Tenancies                                                                */
   /* ------------------------------------------------------------------------ */
 
@@ -311,6 +297,36 @@ export const db = {
           p_notes: cleanText(notes),
         }),
       ),
+  },
+
+  /* ------------------------------------------------------------------------ */
+  /* Tenant Portal                                                            */
+  /* ------------------------------------------------------------------------ */
+
+  tenantPortal: {
+    /*
+     * Validate the private tenant access key through the database function.
+     * The RPC is responsible for tenant isolation and only returns the
+     * authenticated tenant's own rental summary.
+     */
+    summary: async (accessKey, month = currentMonth()) => {
+      const normalized = String(accessKey || "")
+        .trim()
+        .toUpperCase();
+
+      if (!normalized) {
+        throw new Error("Please enter your access key.");
+      }
+
+      const billingMonth = monthKey(month);
+
+      return unwrap(
+        supabase.rpc("tenant_portal_summary", {
+          p_access_key: normalized,
+          p_billing_month: monthStartDate(billingMonth),
+        }),
+      );
+    },
   },
 
   /* ------------------------------------------------------------------------ */
@@ -556,7 +572,8 @@ export const db = {
 /* -------------------------------------------------------------------------- */
 
 export async function recordPayment({
-  billingRecord,
+  paymentType = "rent",
+  billingRecord = null,
   tenantId,
   tenancyId,
   amount,
@@ -565,23 +582,71 @@ export async function recordPayment({
   referenceNumber,
   notes,
 }) {
-  if (!billingRecord?.id) {
-    throw new Error("Billing record is required.");
-  }
-
   const paymentAmount = toNumber(amount, "Payment amount");
 
   if (paymentAmount <= 0) {
     throw new Error("Payment amount must be greater than zero.");
   }
 
+  if (!tenantId) {
+    throw new Error("Tenant is required.");
+  }
+
+  if (!tenancyId) {
+    throw new Error("Tenancy is required.");
+  }
+
+  const type = String(paymentType || "rent").toLowerCase();
+
+  if (!["rent", "advance", "deposit"].includes(type)) {
+    throw new Error("Invalid payment type.");
+  }
+
+  /*
+   * Monthly rent payments must belong to
+   * an existing monthly billing record.
+   */
+  if (type === "rent") {
+    if (!billingRecord?.id) {
+      throw new Error(
+        "A billing record is required for a monthly rent payment.",
+      );
+    }
+
+    if (billingRecord.tenancy_id !== tenancyId) {
+      throw new Error(
+        "The selected tenancy does not match the billing record.",
+      );
+    }
+
+    const existingPaid = (billingRecord.payments || []).reduce(
+      (sum, payment) => sum + Number(payment.amount || 0),
+      0,
+    );
+
+    const amountDue = Number(billingRecord.amount_due || 0);
+    const balance = Math.max(amountDue - existingPaid, 0);
+
+    if (paymentAmount > balance) {
+      throw new Error(
+        `Payment exceeds the remaining balance of ${balance.toFixed(2)}.`,
+      );
+    }
+  }
+
+  /*
+   * Advance rent and security deposits are standalone
+   * tenant/tenancy payments. They intentionally have
+   * no billing_record_id.
+   */
   return db.payments.create({
-    billing_record_id: billingRecord.id,
+    billing_record_id: type === "rent" ? billingRecord.id : null,
     tenant_id: tenantId,
-    tenancy_id: tenancyId || billingRecord.tenancy_id,
+    tenancy_id: tenancyId,
+    payment_type: type,
     amount: paymentAmount,
     payment_date: paymentDate,
-    payment_method: cleanText(paymentMethod) || "Cash",
+    payment_method: normalizePaymentMethod(paymentMethod),
     reference_number: cleanText(referenceNumber),
     notes: cleanText(notes),
   });
@@ -618,6 +683,7 @@ export async function updatePayment(idOrOptions, maybePayload) {
       payment_method: idOrOptions.paymentMethod,
       reference_number: idOrOptions.referenceNumber,
       notes: idOrOptions.notes,
+      payment_type: idOrOptions.paymentType,
     };
   }
 
@@ -642,7 +708,7 @@ export async function updatePayment(idOrOptions, maybePayload) {
   }
 
   if (payload.payment_method !== undefined) {
-    cleaned.payment_method = cleanText(payload.payment_method) || "Cash";
+    cleaned.payment_method = normalizePaymentMethod(payload.payment_method);
   }
 
   if (payload.reference_number !== undefined) {
@@ -651,6 +717,22 @@ export async function updatePayment(idOrOptions, maybePayload) {
 
   if (payload.notes !== undefined) {
     cleaned.notes = cleanText(payload.notes);
+  }
+
+  /*
+   * Payment types:
+   * - rent
+   * - advance
+   * - deposit
+   */
+  if (payload.payment_type !== undefined) {
+    const paymentType = String(payload.payment_type || "rent").toLowerCase();
+
+    if (!["rent", "advance", "deposit"].includes(paymentType)) {
+      throw new Error("Invalid payment type.");
+    }
+
+    cleaned.payment_type = paymentType;
   }
 
   return db.payments.update(id, cleaned);
@@ -1045,52 +1127,83 @@ export async function importPayments(rows = []) {
 
       if (!tenancy) {
         throw new Error(
-          `No tenancy could be matched for ${tenant.first_name} ${tenant.last_name}.`,
+          `No tenancy could be matched for ${
+            tenant.first_name
+          } ${tenant.last_name}.`,
+        );
+      }
+
+      /*
+       * Supported payment types:
+       *
+       * rent
+       * advance
+       * deposit
+       *
+       * Existing spreadsheets without payment_type
+       * continue to be treated as rent.
+       */
+      const paymentType = String(
+        row.payment_type || row.type || "rent",
+      ).toLowerCase();
+
+      if (!["rent", "advance", "deposit"].includes(paymentType)) {
+        throw new Error(
+          `Invalid payment type "${paymentType}". ` +
+            "Use rent, advance, or deposit.",
         );
       }
 
       const billingMonth = paymentDate.slice(0, 7);
 
+      let billing = null;
+
       /*
-       * billing_month is a DATE.
-       * Convert YYYY-MM to YYYY-MM-01
-       * before querying Supabase.
+       * ONLY monthly rent needs a billing record.
+       *
+       * Advance rent and security deposits are
+       * standalone payments.
        */
-      let billing = await unwrap(
-        supabase
-          .from("billing_records")
-          .select("*")
-          .eq("tenancy_id", tenancy.id)
-          .eq("billing_month", monthStartDate(billingMonth))
-          .maybeSingle(),
-      );
-
-      const moveInMonth = String(tenancy.start_date || "").slice(0, 7);
-
-      if (!billing && moveInMonth === billingMonth) {
-        throw new Error(
-          `Cannot create rent billing for ${tenancy.first_name || "tenant"} during the move-in month (${billingMonth}).`,
-        );
-      }
-
-      if (!billing) {
+      if (paymentType === "rent") {
         billing = await unwrap(
           supabase
             .from("billing_records")
-            .insert({
-              tenancy_id: tenancy.id,
-              billing_month: monthStartDate(billingMonth),
-              due_date: billingDueDate(billingMonth, tenancy.payment_due_day),
-              amount_due: Number(tenancy.monthly_rent || 0),
-              status: "upcoming",
-            })
-            .select()
-            .single(),
+            .select("*")
+            .eq("tenancy_id", tenancy.id)
+            .eq("billing_month", monthStartDate(billingMonth))
+            .maybeSingle(),
         );
+
+        const moveInMonth = String(tenancy.start_date || "").slice(0, 7);
+
+        if (!billing && moveInMonth === billingMonth) {
+          throw new Error(
+            `Cannot create rent billing for ${
+              tenancy.first_name || "tenant"
+            } during the move-in month (${billingMonth}).`,
+          );
+        }
+
+        if (!billing) {
+          billing = await unwrap(
+            supabase
+              .from("billing_records")
+              .insert({
+                tenancy_id: tenancy.id,
+                billing_month: monthStartDate(billingMonth),
+                due_date: billingDueDate(billingMonth, tenancy.payment_due_day),
+                amount_due: Number(tenancy.monthly_rent || 0),
+                status: "upcoming",
+              })
+              .select()
+              .single(),
+          );
+        }
       }
 
-      const paymentMethod =
-        cleanText(row.method || row.payment_method) || "Cash";
+      const paymentMethod = normalizePaymentMethod(
+        row.method || row.payment_method,
+      );
 
       const reference = cleanText(row.reference || row.reference_number);
 
@@ -1099,25 +1212,31 @@ export async function importPayments(rows = []) {
         "Imported from spreadsheet";
 
       /*
-       * Skip an exact duplicate
-       * instead of creating the same
-       * payment twice.
+       * Prevent exact duplicate payments.
        */
-      const existing = await unwrap(
-        supabase
-          .from("payments")
-          .select("*")
-          .eq("billing_record_id", billing.id)
-          .eq("payment_date", paymentDate)
-          .eq("amount", amount)
-          .eq("payment_method", paymentMethod)
-          .limit(20),
-      );
+      let existingQuery = supabase
+        .from("payments")
+        .select("*")
+        .eq("payment_date", paymentDate)
+        .eq("amount", amount)
+        .eq("payment_method", paymentMethod)
+        .eq("payment_type", paymentType)
+        .limit(20);
+
+      if (paymentType === "rent") {
+        existingQuery = existingQuery.eq("billing_record_id", billing.id);
+      } else {
+        existingQuery = existingQuery.is("billing_record_id", null);
+      }
+
+      const existing = await unwrap(existingQuery);
 
       const duplicate = (existing || []).find(
         (payment) =>
           (payment.reference_number || null) === reference &&
-          (payment.notes || null) === notes,
+          (payment.notes || null) === notes &&
+          payment.tenant_id === tenant.id &&
+          payment.tenancy_id === tenancy.id,
       );
 
       if (duplicate) {
@@ -1129,11 +1248,20 @@ export async function importPayments(rows = []) {
         supabase
           .from("payments")
           .insert({
-            billing_record_id: billing.id,
+            /*
+             * Rent:
+             *   billing record ID
+             *
+             * Advance/deposit:
+             *   NULL
+             */
+            billing_record_id: paymentType === "rent" ? billing.id : null,
 
             tenant_id: tenant.id,
 
             tenancy_id: tenancy.id,
+
+            payment_type: paymentType,
 
             amount,
 
@@ -1158,6 +1286,11 @@ export async function importPayments(rows = []) {
     }
   }
 
+  /*
+   * Only rent payments affect billing status,
+   * but refreshing the affected months is still
+   * safe here.
+   */
   await syncBillingStatusesForMonths([
     ...new Set(
       rows

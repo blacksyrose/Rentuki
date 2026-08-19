@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import { db } from "../services/db";
@@ -45,6 +45,7 @@ export default function Maintenance() {
   const [editingExpense, setEditingExpense] = useState(null);
 
   const [form, setForm] = useState(emptyMaintenanceForm());
+  const [search, setSearch] = useState("");
 
   const toast = useToast();
 
@@ -266,8 +267,115 @@ export default function Maintenance() {
   };
 
   /* ---------------------------------------------------------------------- */
+  /* Inline status                                                           */
+  /* ---------------------------------------------------------------------- */
+
+  const updateMaintenanceStatus = async (item, status) => {
+    if (!status || status === item.status) return;
+
+    try {
+      await db.maintenance.update(item.id, { status });
+      toast.success("Maintenance status updated.");
+      await maintenance.refresh();
+    } catch (error) {
+      toast.error(error.message || "Unable to update maintenance status.");
+    }
+  };
+
+  /* ---------------------------------------------------------------------- */
   /* Render                                                                  */
   /* ---------------------------------------------------------------------- */
+
+  const maintenanceRows = (maintenance.data || []).filter((item) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+
+    return [
+      item.title,
+      item.description,
+      item.priority,
+      item.status,
+      item.reported_date,
+      item.units?.unit_number,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
+
+  const expenseRows = (expenses.data || []).filter((item) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+
+    return [
+      item.category,
+      item.description,
+      item.vendor,
+      item.expense_date,
+      item.units?.unit_number,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
+
+  const pendingCount = (maintenance.data || []).filter(
+    (item) => item.status === "open",
+  ).length;
+
+  const inProgressCount = (maintenance.data || []).filter(
+    (item) => item.status === "in_progress",
+  ).length;
+
+  const resolvedCount = (maintenance.data || []).filter(
+    (item) => item.status === "completed",
+  ).length;
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  const monthExpenses = (expenses.data || []).filter((item) => {
+    if (!item.expense_date) return false;
+    const date = new Date(`${item.expense_date}T00:00:00`);
+    return (
+      date.getFullYear() === currentYear && date.getMonth() === currentMonth
+    );
+  });
+
+  const yearExpenses = (expenses.data || []).filter((item) => {
+    if (!item.expense_date) return false;
+    return (
+      new Date(`${item.expense_date}T00:00:00`).getFullYear() === currentYear
+    );
+  });
+
+  const monthTotal = monthExpenses.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0,
+  );
+
+  const yearTotal = yearExpenses.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0,
+  );
+
+  const formatDate = (value) => {
+    if (!value) return "—";
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const statusLabel = (status) => {
+    if (status === "open") return "Pending";
+    if (status === "in_progress") return "In Progress";
+    if (status === "completed") return "Resolved";
+    if (status === "cancelled") return "Cancelled";
+    return status || "Pending";
+  };
 
   const modalTitle = editingMaintenance
     ? "Edit maintenance request"
@@ -278,22 +386,20 @@ export default function Maintenance() {
         : "New expense";
 
   return (
-    <div>
+    <div className="maintenance-page">
       {/* ------------------------------------------------------------------ */}
       {/* Header                                                             */}
       {/* ------------------------------------------------------------------ */}
 
-      <div className="page-head">
+      <div className="page-head maintenance-page-head">
         <div>
           <h1>Maintenance & Expenses</h1>
-
           <p>Track repairs and operating costs in one place.</p>
         </div>
 
-        <button className="primary" onClick={openCreate}>
-          <Plus size={17} />
-
-          {tab === "maintenance" ? "Maintenance request" : "Expense"}
+        <button className="primary maintenance-create-btn" onClick={openCreate}>
+          <Plus size={16} />
+          {tab === "maintenance" ? "New request" : "Add expense"}
         </button>
       </div>
 
@@ -301,11 +407,12 @@ export default function Maintenance() {
       {/* Tabs                                                               */}
       {/* ------------------------------------------------------------------ */}
 
-      <div className="tabs">
+      <div className="tabs maintenance-tabs">
         <button
           className={tab === "maintenance" ? "active" : ""}
           onClick={() => {
             setTab("maintenance");
+            setSearch("");
             setOpen(false);
             setEditingMaintenance(null);
             setEditingExpense(null);
@@ -318,6 +425,7 @@ export default function Maintenance() {
           className={tab === "expenses" ? "active" : ""}
           onClick={() => {
             setTab("expenses");
+            setSearch("");
             setOpen(false);
             setEditingMaintenance(null);
             setEditingExpense(null);
@@ -327,165 +435,225 @@ export default function Maintenance() {
         </button>
       </div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Tables                                                             */}
-      {/* ------------------------------------------------------------------ */}
-
-      <section className="panel table-panel">
-        {tab === "maintenance" ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Issue</th>
-
-                  <th>Unit</th>
-
-                  <th>Priority</th>
-
-                  <th>Status</th>
-
-                  <th>Reported</th>
-
-                  <th>Cost</th>
-
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {(maintenance.data || []).map((m) => (
-                  <tr key={m.id}>
-                    <td>
-                      <strong>{m.title}</strong>
-
-                      <small>{m.description || "—"}</small>
-                    </td>
-
-                    <td>{m.units?.unit_number || "—"}</td>
-
-                    <td>
-                      <StatusBadge status={m.priority} />
-                    </td>
-
-                    <td>
-                      <StatusBadge status={m.status} />
-                    </td>
-
-                    <td>{m.reported_date || "—"}</td>
-
-                    <td>{money(m.actual_cost || m.estimated_cost || 0)}</td>
-
-                    <td>
-                      <div className="actions">
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => openEditMaintenance(m)}
-                        >
-                          <Pencil size={14} />
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => deleteMaintenance(m)}
-                          style={{
-                            color: "#b42318",
-                          }}
-                        >
-                          <Trash2 size={14} />
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {!maintenance.data?.length && (
-                  <tr>
-                    <td colSpan="7">No maintenance requests yet.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+      {tab === "maintenance" ? (
+        <>
+          <div className="maintenance-stats">
+            <div className="maintenance-stat-card">
+              <span>Pending</span>
+              <strong>{pendingCount}</strong>
+            </div>
+            <div className="maintenance-stat-card">
+              <span>In Progress</span>
+              <strong>{inProgressCount}</strong>
+            </div>
+            <div className="maintenance-stat-card">
+              <span>Resolved</span>
+              <strong>{resolvedCount}</strong>
+            </div>
           </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
 
-                  <th>Category</th>
+          <section className="panel maintenance-table-panel">
+            <div className="maintenance-search-bar">
+              <Search size={15} />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search issue, tenant, or unit..."
+                aria-label="Search maintenance"
+              />
+            </div>
 
-                  <th>Description</th>
-
-                  <th>Unit</th>
-
-                  <th>Vendor</th>
-
-                  <th>Amount</th>
-
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {(expenses.data || []).map((x) => (
-                  <tr key={x.id}>
-                    <td>{x.expense_date || "—"}</td>
-
-                    <td>{x.category || "—"}</td>
-
-                    <td>{x.description || "—"}</td>
-
-                    <td>{x.units?.unit_number || "Property-wide"}</td>
-
-                    <td>{x.vendor || "—"}</td>
-
-                    <td>
-                      <strong>{money(x.amount)}</strong>
-                    </td>
-
-                    <td>
-                      <div className="actions">
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => openEditExpense(x)}
-                        >
-                          <Pencil size={14} />
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => deleteExpense(x)}
-                          style={{
-                            color: "#b42318",
-                          }}
-                        >
-                          <Trash2 size={14} />
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {!expenses.data?.length && (
+            <div className="table-wrap">
+              <table className="maintenance-table">
+                <thead>
                   <tr>
-                    <td colSpan="7">No expenses recorded yet.</td>
+                    <th>Issue</th>
+                    <th>Unit</th>
+                    <th>Reported</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Assigned</th>
+                    <th>Cost</th>
+                    <th>Action</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {maintenanceRows.map((m) => (
+                    <tr key={m.id}>
+                      <td>
+                        <strong>{m.title}</strong>
+                        <small>{m.description || "Maintenance"}</small>
+                      </td>
+
+                      <td>{m.units?.unit_number || "Property-wide"}</td>
+
+                      <td>{formatDate(m.reported_date)}</td>
+
+                      <td>
+                        <span
+                          className={`maintenance-priority priority-${m.priority || "medium"}`}
+                        >
+                          {m.priority || "Medium"}
+                        </span>
+                      </td>
+
+                      <td>
+                        <select
+                          className={`maintenance-status-select status-${m.status || "open"}`}
+                          value={m.status || "open"}
+                          onChange={(event) =>
+                            updateMaintenanceStatus(m, event.target.value)
+                          }
+                          aria-label={`Status for ${m.title}`}
+                        >
+                          <option value="open">Pending</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Resolved</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </td>
+
+                      <td>{m.assigned_to || "—"}</td>
+
+                      <td>{money(m.actual_cost || m.estimated_cost || 0)}</td>
+
+                      <td>
+                        <div className="maintenance-action-group">
+                          <button
+                            type="button"
+                            className="maintenance-icon-action"
+                            onClick={() => openEditMaintenance(m)}
+                            aria-label={`Edit ${m.title}`}
+                            title="Edit"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="maintenance-icon-action danger"
+                            onClick={() => deleteMaintenance(m)}
+                            aria-label={`Delete ${m.title}`}
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {!maintenanceRows.length && (
+                    <tr>
+                      <td colSpan="8" className="maintenance-empty-row">
+                        {search
+                          ? "No maintenance requests match your search."
+                          : "No maintenance requests yet."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      ) : (
+        <>
+          <div className="maintenance-stats expense-stats">
+            <div className="maintenance-stat-card">
+              <span>This month</span>
+              <strong>{money(monthTotal)}</strong>
+            </div>
+            <div className="maintenance-stat-card">
+              <span>This year</span>
+              <strong>{money(yearTotal)}</strong>
+            </div>
+            <div className="maintenance-stat-card expense-count-card">
+              <span>Expense entries</span>
+              <strong>{(expenses.data || []).length}</strong>
+            </div>
           </div>
-        )}
-      </section>
+
+          <section className="panel maintenance-table-panel expense-table-panel">
+            <div className="maintenance-search-bar expense-search-bar">
+              <Search size={15} />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search description, vendor, category..."
+                aria-label="Search expenses"
+              />
+            </div>
+
+            <div className="table-wrap">
+              <table className="maintenance-table expense-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Vendor</th>
+                    <th>Unit</th>
+                    <th>Amount</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {expenseRows.map((x) => (
+                    <tr key={x.id}>
+                      <td>{formatDate(x.expense_date)}</td>
+                      <td>
+                        <span className="expense-category-badge">
+                          {x.category || "Other"}
+                        </span>
+                      </td>
+                      <td>{x.description || "—"}</td>
+                      <td>{x.vendor || "—"}</td>
+                      <td>{x.units?.unit_number || "Property-wide"}</td>
+                      <td>
+                        <strong>{money(x.amount)}</strong>
+                      </td>
+                      <td>
+                        <div className="maintenance-action-group">
+                          <button
+                            type="button"
+                            className="maintenance-icon-action"
+                            onClick={() => openEditExpense(x)}
+                            aria-label={`Edit ${x.description}`}
+                            title="Edit"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="maintenance-icon-action danger"
+                            onClick={() => deleteExpense(x)}
+                            aria-label={`Delete ${x.description}`}
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {!expenseRows.length && (
+                    <tr>
+                      <td colSpan="7" className="maintenance-empty-row">
+                        {search
+                          ? "No expenses match your search."
+                          : "No expenses recorded yet."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Modal                                                               */}

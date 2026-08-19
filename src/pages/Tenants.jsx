@@ -2,14 +2,10 @@ import { useMemo, useState } from "react";
 import {
   Search,
   Plus,
-  History,
+  Eye,
   ArrowRightLeft,
   Pencil,
   LogOut,
-  KeyRound,
-  Copy,
-  RefreshCw,
-  ShieldCheck,
 } from "lucide-react";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
@@ -26,12 +22,11 @@ export default function Tenants() {
     [],
   );
 
+  const { data: billing } = useAsync(() => db.billing.list(), []);
+
   const [q, setQ] = useState("");
   const [historical, setHistorical] = useState(false);
 
-  const portalKeys = useAsync(() => db.tenantPortal.list(), []);
-  const [portalKeyModal, setPortalKeyModal] = useState(null);
-  const [portalKeyBusy, setPortalKeyBusy] = useState(false);
 
   const [open, setOpen] = useState(false);
 
@@ -103,18 +98,33 @@ export default function Tenants() {
   const tenants = (data || [])
     .filter((t) => (historical ? t.status !== "active" : t.status === "active"))
     .filter((t) =>
-      `${t.first_name} ${t.last_name} ${t.phone || ""}`
+      `${t.first_name} ${t.last_name} ${t.phone || ""} ${t.email || ""}`
         .toLowerCase()
         .includes(q.toLowerCase()),
     );
 
-  const portalKeyMap = useMemo(
-    () =>
-      new Map(
-        (portalKeys.data || []).map((item) => [item.tenant_id, item]),
-      ),
-    [portalKeys.data],
-  );
+
+  const tenantBalanceMap = useMemo(() => {
+    const map = new Map();
+
+    (billing || []).forEach((record) => {
+      const tenantId = record.tenancies?.tenant_id;
+      if (!tenantId) return;
+
+      const amountDue = Number(record.amount_due || 0);
+      const paid = (record.payments || []).reduce(
+        (total, payment) => total + Number(payment.amount || 0),
+        0,
+      );
+
+      map.set(
+        tenantId,
+        (map.get(tenantId) || 0) + Math.max(amountDue - paid, 0),
+      );
+    });
+
+    return map;
+  }, [billing]);
 
   // ------------------------------------------------------------
   // Refresh selected tenant profile
@@ -158,64 +168,6 @@ export default function Tenants() {
       await refresh();
     } catch (e) {
       toast.error(e.message);
-    }
-  };
-
-  // ------------------------------------------------------------
-  // Tenant portal access key
-  // ------------------------------------------------------------
-
-  const generatePortalKey = async (tenant) => {
-    if (!tenant) return;
-
-    setPortalKeyBusy(true);
-
-    try {
-      const result = await db.tenantPortal.generate(tenant.id);
-
-      setPortalKeyModal({
-        tenant,
-        accessKey: result?.access_key || "",
-      });
-
-      toast.success("Tenant portal access key generated");
-      await portalKeys.refresh();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setPortalKeyBusy(false);
-    }
-  };
-
-  const revokePortalKey = async (tenant) => {
-    if (!tenant) return;
-
-    if (!window.confirm(`Revoke the tenant portal key for ${tenant.first_name} ${tenant.last_name}?`)) {
-      return;
-    }
-
-    setPortalKeyBusy(true);
-
-    try {
-      await db.tenantPortal.revoke(tenant.id);
-      toast.success("Tenant portal access revoked");
-      setPortalKeyModal(null);
-      await portalKeys.refresh();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setPortalKeyBusy(false);
-    }
-  };
-
-  const copyPortalKey = async () => {
-    if (!portalKeyModal?.accessKey) return;
-
-    try {
-      await navigator.clipboard.writeText(portalKeyModal.accessKey);
-      toast.success("Access key copied");
-    } catch {
-      toast.error("Unable to copy the key. Please copy it manually.");
     }
   };
 
@@ -588,68 +540,58 @@ export default function Tenants() {
   // ------------------------------------------------------------
 
   return (
-    <div>
-      {/* ------------------------------------------------------
-          Page Header
-      ------------------------------------------------------ */}
-
-      <div className="page-head">
+    <div className="tenant-directory-page">
+      <div className="page-head tenant-directory-head">
         <div>
           <h1>Tenant Directory</h1>
-          <p>Active and historical tenants, with preserved rental history.</p>
+          <p>Database of tenant contact info, active leases, and rental histories.</p>
         </div>
 
-        <button className="primary" onClick={() => setOpen(true)}>
-          <Plus size={17} />
+        <button
+          className="primary tenant-add-button"
+          onClick={() => setOpen(true)}
+        >
+          <Plus size={15} />
           Add Tenant
         </button>
       </div>
 
-      {/* ------------------------------------------------------
-          Search / Filter
-      ------------------------------------------------------ */}
-
-      <div className="toolbar">
-        <div className="search">
-          <Search size={17} />
-
+      <div className="tenant-directory-toolbar">
+        <div className="search tenant-search">
+          <Search size={15} />
           <input
-            placeholder="Search tenants…"
+            placeholder="Search tenant name or contact..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
 
-        <button
-          className={historical ? "secondary active" : "secondary"}
-          onClick={() => setHistorical(!historical)}
-        >
-          <History size={16} />
-
-          {historical ? "Historical" : "Active"}
-        </button>
+        <label className="tenant-filter-select">
+          <select
+            value={historical ? "historical" : "active"}
+            onChange={(e) => setHistorical(e.target.value === "historical")}
+            aria-label="Tenant status filter"
+          >
+            <option value="active">Active</option>
+            <option value="historical">Historical</option>
+          </select>
+        </label>
       </div>
 
-      {/* ------------------------------------------------------
-          Tenant Table
-      ------------------------------------------------------ */}
-
-      <section className="panel table-panel">
+      <section className="panel table-panel tenant-directory-panel">
         {loading ? (
           <div className="loading">Loading tenants…</div>
         ) : (
-          <div className="table-wrap">
-            <table>
+          <div className="table-wrap tenant-table-wrap">
+            <table className="tenant-directory-table">
               <thead>
                 <tr>
                   <th>Tenant</th>
-                  <th>Contact</th>
-                  <th>Current unit</th>
-                  <th>Rent</th>
-                  <th>Due day</th>
-                  <th>Portal access</th>
+                  <th>Unit</th>
+                  <th>Monthly rent</th>
+                  <th>Balance</th>
                   <th>Status</th>
-                  <th>History</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
 
@@ -659,45 +601,63 @@ export default function Tenants() {
                     (x) => x.status === "active",
                   );
 
+                  const currentUnit = current
+                    ? (units || []).find((u) => u.id === current.unit_id) ||
+                      current.units
+                    : null;
+
+                  const balance = tenantBalanceMap.get(t.id) || 0;
+
                   return (
-                    <tr
-                      key={t.id}
-                      onClick={() => openProfile(t)}
-                      style={{
-                        cursor: "pointer",
-                      }}
-                    >
+                    <tr key={t.id} onClick={() => openProfile(t)}>
                       <td>
-                        <strong>
-                          {t.first_name} {t.last_name}
+                        <div className="tenant-name-cell">
+                          <span className="tenant-avatar">
+                            {(t.first_name?.[0] || "T").toUpperCase()}
+                            {(t.last_name?.[0] || "").toUpperCase()}
+                          </span>
+                          <span className="tenant-name-copy">
+                            <strong>
+                              {t.first_name} {t.last_name}
+                            </strong>
+                            <small>
+                              {t.phone || t.email || "No contact number"}
+                            </small>
+                          </span>
+                        </div>
+                      </td>
+
+                      <td>
+                        <div className="tenant-unit-cell">
+                          <strong>
+                            {currentUnit?.unit_number
+                              ? `Unit ${currentUnit.unit_number}`
+                              : "—"}
+                          </strong>
+                          <small>
+                            {currentUnit?.unit_type ||
+                              currentUnit?.type ||
+                              "Rental unit"}
+                          </small>
+                        </div>
+                      </td>
+
+                      <td>
+                        <strong className="tenant-money">
+                          {current ? money(current.monthly_rent) : "—"}
                         </strong>
-
-                        <small>{t.email || "No email"}</small>
-                      </td>
-
-                      <td>{t.phone || "—"}</td>
-
-                      <td>{current?.units?.unit_number || "—"}</td>
-
-                      <td>{current ? money(current.monthly_rent) : "—"}</td>
-
-                      <td>
-                        {current
-                          ? `${current.payment_due_day}${current.payment_due_day === 1 ? "st" : current.payment_due_day === 2 ? "nd" : current.payment_due_day === 3 ? "rd" : "th"}`
-                          : "—"}
                       </td>
 
                       <td>
-                        {portalKeyMap.has(t.id) ? (
-                          <span className="portal-key-pill">
-                            <KeyRound size={12} />
-                            {portalKeyMap.get(t.id)?.key_preview || "Active"}
-                          </span>
-                        ) : (
-                          <span className="portal-key-pill muted">
-                            Not generated
-                          </span>
-                        )}
+                        <strong
+                          className={
+                            balance > 0
+                              ? "tenant-money tenant-balance-due"
+                              : "tenant-money tenant-balance-paid"
+                          }
+                        >
+                          {money(balance)}
+                        </strong>
                       </td>
 
                       <td>
@@ -705,8 +665,49 @@ export default function Tenants() {
                       </td>
 
                       <td>
-                        {(t.tenancies || []).length}
-                        {" rental period(s)"}
+                        <div className="tenant-row-actions">
+                          <button
+                            type="button"
+                            className="tenant-icon-action"
+                            title="View tenant"
+                            aria-label={`View ${t.first_name} ${t.last_name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openProfile(t);
+                            }}
+                          >
+                            <Eye size={15} />
+                          </button>
+
+                          {current && (
+                            <button
+                              type="button"
+                              className="tenant-icon-action"
+                              title="Transfer tenant"
+                              aria-label={`Transfer ${t.first_name} ${t.last_name}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTenant(t);
+                                setTransferringTenancy(current);
+                                setTransferForm({
+                                  new_unit_id: "",
+                                  transfer_date: new Date()
+                                    .toISOString()
+                                    .slice(0, 10),
+                                  monthly_rent: current.monthly_rent ?? "",
+                                  payment_due_day: String(
+                                    current.payment_due_day ?? "5",
+                                  ),
+                                  deposit_amount: current.deposit_amount ?? "0",
+                                  notes: "",
+                                });
+                                setTransferOpen(true);
+                              }}
+                            >
+                              <ArrowRightLeft size={14} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -715,7 +716,9 @@ export default function Tenants() {
             </table>
 
             {!tenants.length && (
-              <div className="empty">No tenants match your filters.</div>
+              <div className="empty tenant-directory-empty">
+                No tenants match your filters.
+              </div>
             )}
           </div>
         )}
@@ -910,62 +913,6 @@ export default function Tenants() {
               )}
             </div>
 
-            {/* Tenant Portal Access */}
-
-            <div className="tenant-portal-access-card">
-              <div className="tenant-portal-access-head">
-                <div className="tenant-portal-access-icon">
-                  <KeyRound size={18} />
-                </div>
-
-                <div>
-                  <h3>Tenant Portal Access</h3>
-                  <p>
-                    Give this tenant a private read-only key to view monthly
-                    rent, payments, receipts, and unit history.
-                  </p>
-                </div>
-
-                <ShieldCheck size={19} />
-              </div>
-
-              <div className="tenant-portal-access-body">
-                <div>
-                  <span className="tenant-portal-access-label">Status</span>
-                  {portalKeyMap.has(selectedTenant.id) ? (
-                    <strong className="portal-access-active">
-                      Active · {portalKeyMap.get(selectedTenant.id)?.key_preview}
-                    </strong>
-                  ) : (
-                    <strong className="portal-access-inactive">Not configured</strong>
-                  )}
-                </div>
-
-                <div className="tenant-portal-access-actions">
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => generatePortalKey(selectedTenant)}
-                    disabled={portalKeyBusy}
-                  >
-                    <RefreshCw size={14} />
-                    {portalKeyMap.has(selectedTenant.id) ? "Regenerate key" : "Generate key"}
-                  </button>
-
-                  {portalKeyMap.has(selectedTenant.id) && (
-                    <button
-                      type="button"
-                      className="secondary danger-outline"
-                      onClick={() => revokePortalKey(selectedTenant)}
-                      disabled={portalKeyBusy}
-                    >
-                      Revoke access
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Current Rental */}
 
             <div
@@ -1138,64 +1085,7 @@ export default function Tenants() {
           TENANT PORTAL KEY
       ====================================================== */}
 
-      <Modal
-        open={Boolean(portalKeyModal)}
-        onClose={() => setPortalKeyModal(null)}
-        title="Tenant portal access key"
-      >
-        {portalKeyModal && (
-          <div className="portal-key-modal">
-            <div className="portal-key-modal-icon">
-              <KeyRound size={22} />
-            </div>
 
-            <h3>
-              {portalKeyModal.tenant.first_name}{" "}
-              {portalKeyModal.tenant.last_name}
-            </h3>
-
-            <p>
-              Share this key privately with the tenant. It gives read-only
-              access to the tenant portal. The full key is shown only after it
-              is generated or regenerated.
-            </p>
-
-            <div className="portal-key-display">
-              <code>{portalKeyModal.accessKey}</code>
-              <button
-                type="button"
-                className="icon-btn"
-                title="Copy access key"
-                onClick={copyPortalKey}
-              >
-                <Copy size={17} />
-              </button>
-            </div>
-
-            <div className="form-note">
-              Portal URL: <strong>/tenant-portal</strong>
-            </div>
-
-            <div className="form-actions">
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setPortalKeyModal(null)}
-              >
-                Done
-              </button>
-              <button
-                type="button"
-                className="primary"
-                onClick={copyPortalKey}
-              >
-                <Copy size={15} />
-                Copy key
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
 
       {/* ======================================================
     EDIT TENANT
