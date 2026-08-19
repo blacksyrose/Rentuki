@@ -180,3 +180,18 @@ Do not blindly import spreadsheet rows.
 - Test all Scenario A–G cases from the supplied specification.
 
 This project is deliberately structured so these additions do not require replacing the core database model.
+
+
+## Tenant Portal Access
+
+The tenant portal is read-only and does not require a tenant Supabase account.
+
+1. Run `supabase/tenant_portal.sql` once in the Supabase SQL Editor.
+2. In **Tenant Directory**, open a tenant profile.
+3. Under **Tenant Portal Access**, choose **Generate key**.
+4. Copy the key and privately give it to the tenant.
+5. The tenant opens `/tenant-portal` and enters the key.
+6. Regenerating a key immediately invalidates the previous key.
+7. Revoking access disables the key without deleting the tenant's rental history.
+
+The portal uses a server-side `SECURITY DEFINER` RPC and a SHA-256 hash of the access key. The anonymous client is not granted direct read access to tenant, tenancy, billing, payment, or receipt tables.

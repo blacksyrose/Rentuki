@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Search,
   Plus,
@@ -6,6 +6,10 @@ import {
   ArrowRightLeft,
   Pencil,
   LogOut,
+  KeyRound,
+  Copy,
+  RefreshCw,
+  ShieldCheck,
 } from "lucide-react";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
@@ -24,6 +28,10 @@ export default function Tenants() {
 
   const [q, setQ] = useState("");
   const [historical, setHistorical] = useState(false);
+
+  const portalKeys = useAsync(() => db.tenantPortal.list(), []);
+  const [portalKeyModal, setPortalKeyModal] = useState(null);
+  const [portalKeyBusy, setPortalKeyBusy] = useState(false);
 
   const [open, setOpen] = useState(false);
 
@@ -100,6 +108,14 @@ export default function Tenants() {
         .includes(q.toLowerCase()),
     );
 
+  const portalKeyMap = useMemo(
+    () =>
+      new Map(
+        (portalKeys.data || []).map((item) => [item.tenant_id, item]),
+      ),
+    [portalKeys.data],
+  );
+
   // ------------------------------------------------------------
   // Refresh selected tenant profile
   // ------------------------------------------------------------
@@ -142,6 +158,64 @@ export default function Tenants() {
       await refresh();
     } catch (e) {
       toast.error(e.message);
+    }
+  };
+
+  // ------------------------------------------------------------
+  // Tenant portal access key
+  // ------------------------------------------------------------
+
+  const generatePortalKey = async (tenant) => {
+    if (!tenant) return;
+
+    setPortalKeyBusy(true);
+
+    try {
+      const result = await db.tenantPortal.generate(tenant.id);
+
+      setPortalKeyModal({
+        tenant,
+        accessKey: result?.access_key || "",
+      });
+
+      toast.success("Tenant portal access key generated");
+      await portalKeys.refresh();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setPortalKeyBusy(false);
+    }
+  };
+
+  const revokePortalKey = async (tenant) => {
+    if (!tenant) return;
+
+    if (!window.confirm(`Revoke the tenant portal key for ${tenant.first_name} ${tenant.last_name}?`)) {
+      return;
+    }
+
+    setPortalKeyBusy(true);
+
+    try {
+      await db.tenantPortal.revoke(tenant.id);
+      toast.success("Tenant portal access revoked");
+      setPortalKeyModal(null);
+      await portalKeys.refresh();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setPortalKeyBusy(false);
+    }
+  };
+
+  const copyPortalKey = async () => {
+    if (!portalKeyModal?.accessKey) return;
+
+    try {
+      await navigator.clipboard.writeText(portalKeyModal.accessKey);
+      toast.success("Access key copied");
+    } catch {
+      toast.error("Unable to copy the key. Please copy it manually.");
     }
   };
 
@@ -573,6 +647,7 @@ export default function Tenants() {
                   <th>Current unit</th>
                   <th>Rent</th>
                   <th>Due day</th>
+                  <th>Portal access</th>
                   <th>Status</th>
                   <th>History</th>
                 </tr>
@@ -606,7 +681,24 @@ export default function Tenants() {
 
                       <td>{current ? money(current.monthly_rent) : "—"}</td>
 
-                      <td>{current ? `${current.payment_due_day}th` : "—"}</td>
+                      <td>
+                        {current
+                          ? `${current.payment_due_day}${current.payment_due_day === 1 ? "st" : current.payment_due_day === 2 ? "nd" : current.payment_due_day === 3 ? "rd" : "th"}`
+                          : "—"}
+                      </td>
+
+                      <td>
+                        {portalKeyMap.has(t.id) ? (
+                          <span className="portal-key-pill">
+                            <KeyRound size={12} />
+                            {portalKeyMap.get(t.id)?.key_preview || "Active"}
+                          </span>
+                        ) : (
+                          <span className="portal-key-pill muted">
+                            Not generated
+                          </span>
+                        )}
+                      </td>
 
                       <td>
                         <StatusBadge status={t.status} />
@@ -818,6 +910,62 @@ export default function Tenants() {
               )}
             </div>
 
+            {/* Tenant Portal Access */}
+
+            <div className="tenant-portal-access-card">
+              <div className="tenant-portal-access-head">
+                <div className="tenant-portal-access-icon">
+                  <KeyRound size={18} />
+                </div>
+
+                <div>
+                  <h3>Tenant Portal Access</h3>
+                  <p>
+                    Give this tenant a private read-only key to view monthly
+                    rent, payments, receipts, and unit history.
+                  </p>
+                </div>
+
+                <ShieldCheck size={19} />
+              </div>
+
+              <div className="tenant-portal-access-body">
+                <div>
+                  <span className="tenant-portal-access-label">Status</span>
+                  {portalKeyMap.has(selectedTenant.id) ? (
+                    <strong className="portal-access-active">
+                      Active · {portalKeyMap.get(selectedTenant.id)?.key_preview}
+                    </strong>
+                  ) : (
+                    <strong className="portal-access-inactive">Not configured</strong>
+                  )}
+                </div>
+
+                <div className="tenant-portal-access-actions">
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => generatePortalKey(selectedTenant)}
+                    disabled={portalKeyBusy}
+                  >
+                    <RefreshCw size={14} />
+                    {portalKeyMap.has(selectedTenant.id) ? "Regenerate key" : "Generate key"}
+                  </button>
+
+                  {portalKeyMap.has(selectedTenant.id) && (
+                    <button
+                      type="button"
+                      className="secondary danger-outline"
+                      onClick={() => revokePortalKey(selectedTenant)}
+                      disabled={portalKeyBusy}
+                    >
+                      Revoke access
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Current Rental */}
 
             <div
@@ -981,6 +1129,69 @@ export default function Tenants() {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ======================================================
+          TENANT PORTAL KEY
+      ====================================================== */}
+
+      <Modal
+        open={Boolean(portalKeyModal)}
+        onClose={() => setPortalKeyModal(null)}
+        title="Tenant portal access key"
+      >
+        {portalKeyModal && (
+          <div className="portal-key-modal">
+            <div className="portal-key-modal-icon">
+              <KeyRound size={22} />
+            </div>
+
+            <h3>
+              {portalKeyModal.tenant.first_name}{" "}
+              {portalKeyModal.tenant.last_name}
+            </h3>
+
+            <p>
+              Share this key privately with the tenant. It gives read-only
+              access to the tenant portal. The full key is shown only after it
+              is generated or regenerated.
+            </p>
+
+            <div className="portal-key-display">
+              <code>{portalKeyModal.accessKey}</code>
+              <button
+                type="button"
+                className="icon-btn"
+                title="Copy access key"
+                onClick={copyPortalKey}
+              >
+                <Copy size={17} />
+              </button>
+            </div>
+
+            <div className="form-note">
+              Portal URL: <strong>/tenant-portal</strong>
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setPortalKeyModal(null)}
+              >
+                Done
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={copyPortalKey}
+              >
+                <Copy size={15} />
+                Copy key
+              </button>
             </div>
           </div>
         )}

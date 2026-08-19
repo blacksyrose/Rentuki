@@ -206,6 +206,39 @@ export const db = {
   },
 
   /* ------------------------------------------------------------------------ */
+  /* Tenant Portal                                                            */
+  /* ------------------------------------------------------------------------ */
+
+  tenantPortal: {
+    list: () =>
+      unwrap(
+        supabase.rpc("list_tenant_portal_keys"),
+      ),
+
+    generate: (tenantId) =>
+      unwrap(
+        supabase.rpc("generate_tenant_portal_key", {
+          p_tenant_id: tenantId,
+        }),
+      ),
+
+    revoke: (tenantId) =>
+      unwrap(
+        supabase.rpc("revoke_tenant_portal_key", {
+          p_tenant_id: tenantId,
+        }),
+      ),
+
+    summary: (accessKey, month) =>
+      unwrap(
+        supabase.rpc("get_tenant_monthly_summary", {
+          p_access_key: accessKey,
+          p_month: month ? `${month}-01` : undefined,
+        }),
+      ),
+  },
+
+  /* ------------------------------------------------------------------------ */
   /* Tenancies                                                                */
   /* ------------------------------------------------------------------------ */
 

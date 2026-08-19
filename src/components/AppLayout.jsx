@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  ExternalLink,
   Receipt,
   Settings,
   Users,
@@ -27,6 +28,7 @@ const nav = [
   ["/receipts", "Receipts", Receipt],
   ["/reports", "Reports", FileText],
   ["/submeter-calculator", "Submeter Calculator", Calculator],
+  ["/tenant-portal", "Tenant Portal", ExternalLink],
   ["/settings", "Settings", Settings],
 ];
 

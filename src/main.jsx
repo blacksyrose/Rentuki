@@ -16,6 +16,7 @@ import Receipts from "./pages/Receipts";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import SubmeterCalculator from "./pages/SubmeterCalculator";
+import TenantPortal from "./pages/TenantPortal";
 import "./styles.css";
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/tenant-portal" element={<TenantPortal />} />
       <Route
         path="*"
         element={
