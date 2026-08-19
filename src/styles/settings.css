@@ -1,0 +1,650 @@
+/* Rentuki Settings styles */
+
+.rules {
+  margin: 0;
+  padding-left: 18px;
+  color: #647084;
+  font-size: 13px;
+  line-height: 2;
+}
+
+.settings {
+  margin-bottom: 16px;
+}
+
+.settings {
+  margin-bottom: 15px;
+}
+
+.danger-outline {
+  color: #a33d35 !important;
+  border-color: #edc7c2 !important;
+}
+
+.danger-outline:hover {
+  background: #fff4f2 !important;
+  border-color: #e7aaa3 !important;
+}
+
+.tenant-access-settings {
+  margin-bottom: 16px;
+}
+
+.tenant-access-settings-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 14px;
+}
+
+.tenant-access-settings-head h2 {
+  margin: 0 0 3px;
+}
+
+.tenant-access-settings-head p {
+  margin: 0;
+  color: #7a8a83;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tenant-access-settings-icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--rk-green-soft);
+  color: var(--rk-green-dark);
+}
+
+.tenant-access-settings-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 13px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #f5faf7;
+  color: #71827b;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.tenant-access-settings-note svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--rk-green);
+}
+
+.tenant-access-list {
+  display: block;
+  gap: 7px;
+}
+
+.tenant-access-row {
+  margin-bottom: 7px;
+}
+
+.tenant-access-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(210px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 11px;
+  border: 1px solid var(--rk-border-soft);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.tenant-access-tenant strong,
+.tenant-access-tenant span {
+  display: block;
+}
+
+.tenant-access-tenant strong {
+  font-size: 11px;
+}
+
+.tenant-access-tenant span {
+  margin-top: 3px;
+  color: #8a9993;
+  font-size: 9px;
+}
+
+.tenant-access-key {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rk-green-deep);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.tenant-access-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.tenant-access-actions .small-btn {
+  min-height: 30px;
+  padding: 6px 9px;
+}
+
+.tenant-access-empty {
+  padding: 24px 14px;
+  border: 1px dashed var(--rk-border);
+  border-radius: 10px;
+  color: #8a9993;
+  font-size: 11px;
+  text-align: center;
+}
+
+@media (max-width: 800px) {
+
+  .tenant-access-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tenant-access-actions {
+    justify-content: flex-start;
+  }
+
+}
+
+@media (max-width: 520px) {
+
+  .tenant-access-row {
+    gap: 8px;
+  }
+
+  .tenant-access-key {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+}
+
+.tenant-access-key-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tenant-access-key-wrap .tenant-access-key {
+  flex: 1;
+  min-width: 0;
+}
+
+.tenant-access-key-wrap .small-btn {
+  flex: none;
+}
+
+.tenant-access-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.tenant-access-settings .tenant-access-key {
+  background: #f8faf9;
+  border: 1px solid #e1e8e3;
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 12px;
+  color: #17211b;
+}
+
+@media (max-width: 760px) {
+
+  .tenant-access-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tenant-access-key-wrap {
+    width: 100%;
+  }
+
+  .tenant-access-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+}
+
+@media (max-width: 760px) {
+
+  .tenant-access-settings {
+    overflow: visible;
+  }
+
+  .tenant-access-list {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    padding-bottom: 12px;
+    scrollbar-width: auto;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+  }
+
+  .tenant-access-row {
+    display: grid;
+    width: 700px !important;
+    min-width: 700px !important;
+    max-width: none !important;
+    overflow: visible;
+  }
+
+  .tenant-access-list::-webkit-scrollbar {
+    display: block;
+    width: 8px;
+    height: 8px;
+  }
+
+  .tenant-access-list::-webkit-scrollbar-track {
+    background: #edf2ee;
+    border-radius: 999px;
+  }
+
+  .tenant-access-list::-webkit-scrollbar-thumb {
+    background: #7d978b;
+    border-radius: 999px;
+  }
+
+}
+
+@media (max-width: 760px) {
+
+  .tenant-access-list {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: scroll;
+    padding-bottom: 6px;
+  }
+
+  .tenant-access-row {
+    width: 560px;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .tenant-access-list::-webkit-scrollbar {
+    height: 7px;
+  }
+
+  .tenant-access-list::-webkit-scrollbar-thumb {
+    background: #aabbb1;
+    border-radius: 999px;
+  }
+
+}
+
+.stat-icon.success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.badge.success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.report-grid .panel {
+  min-height: 155px;
+}
+
+.report-grid h2 {
+  margin-bottom: 7px;
+}
+
+.report-grid p {
+  margin-bottom: 22px;
+}
+
+.report-import-modal {
+  width: min(900px, 95vw);
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.report-import-status,
+.report-import-error,
+.report-preview {
+  margin-top: 16px;
+}
+
+.report-import-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.report-import-summary p {
+  margin: 4px 0 0;
+}
+
+.report-import-error {
+  border-color: #ef4444;
+}
+
+.report-preview {
+  overflow-x: auto;
+}
+
+.report-preview table {
+  min-width: 620px;
+}
+
+.report-page-head {
+  margin-top: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+@media (max-width: 800px) {
+
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-import-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+}
+
+@media (max-width: 760px) {
+
+  .tenant-access-row,
+  .tenant-access-key-wrap,
+  .tenant-access-actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tenant-access-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .tenant-access-actions .small-btn {
+    flex: 0 1 auto;
+  }
+
+}
+
+html,
+body,
+#root,
+.app-shell {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.tenant-access-settings,
+.tenant-access-row {
+  overflow: hidden;
+}
+
+.tenant-access-list {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+@media (max-width: 760px) {
+
+  .tenant-access-row {
+    min-width: 560px;
+    overflow: visible;
+  }
+
+}
+
+.danger-outline {
+  color: #a33d35 !important;
+  border-color: #edc7c2 !important;
+}
+
+.danger-outline:hover {
+  background: #fff4f2 !important;
+  border-color: #e7aaa3 !important;
+}
+
+.tenant-access-settings {
+  margin-bottom: 16px;
+}
+
+.tenant-access-settings-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 14px;
+}
+
+.tenant-access-settings-head h2 {
+  margin: 0 0 3px;
+}
+
+.tenant-access-settings-head p {
+  margin: 0;
+  color: #7a8a83;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tenant-access-settings-icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--rk-green-soft);
+  color: var(--rk-green-dark);
+}
+
+.tenant-access-settings-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 13px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #f5faf7;
+  color: #71827b;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.tenant-access-settings-note svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--rk-green);
+}
+
+.tenant-access-list {
+  display: block;
+  gap: 7px;
+}
+
+.tenant-access-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(210px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 11px;
+  border: 1px solid var(--rk-border-soft);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.tenant-access-tenant strong,
+.tenant-access-tenant span {
+  display: block;
+}
+
+.tenant-access-tenant strong {
+  font-size: 11px;
+}
+
+.tenant-access-tenant span {
+  margin-top: 3px;
+  color: #8a9993;
+  font-size: 9px;
+}
+
+.tenant-access-key {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rk-green-deep);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.tenant-access-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.tenant-access-actions .small-btn {
+  min-height: 30px;
+  padding: 6px 9px;
+}
+
+.tenant-access-empty {
+  padding: 24px 14px;
+  border: 1px dashed var(--rk-border);
+  border-radius: 10px;
+  color: #8a9993;
+  font-size: 11px;
+  text-align: center;
+}
+
+@media (max-width: 800px) {
+
+  .tenant-access-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tenant-access-actions {
+    justify-content: flex-start;
+  }
+
+}
+
+@media (max-width: 520px) {
+
+  .tenant-access-row {
+    gap: 8px;
+  }
+
+  .tenant-access-key {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+}
+
+@media (max-width: 760px) {
+
+  .tenant-access-list {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: scroll;
+    padding-bottom: 6px;
+  }
+
+  .tenant-access-row {
+    width: 560px;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .tenant-access-list::-webkit-scrollbar {
+    height: 7px;
+  }
+
+  .tenant-access-list::-webkit-scrollbar-thumb {
+    background: #aabbb1;
+    border-radius: 999px;
+  }
+
+}
+
+.tenant-access-key-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tenant-access-key-wrap .tenant-access-key {
+  flex: 1;
+  min-width: 0;
+}
+
+.tenant-access-key-wrap .small-btn {
+  flex: none;
+}
+
+.tenant-access-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.tenant-access-settings .tenant-access-key {
+  background: #f8faf9;
+  border: 1px solid #e1e8e3;
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 12px;
+  color: #17211b;
+}
+
+@media (max-width: 760px) {
+
+  .tenant-access-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tenant-access-key-wrap {
+    width: 100%;
+  }
+
+  .tenant-access-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+}

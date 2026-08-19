@@ -1,0 +1,247 @@
+/* Shared visual contract for authenticated pages and forms. */
+
+:root {
+  --rk-bg: #f6f8f5;
+  --rk-surface: #ffffff;
+  --rk-surface-soft: #f8faf8;
+  --rk-border: #e2e9e3;
+  --rk-border-soft: #edf2ee;
+  --rk-text: #17211b;
+  --rk-muted: #708078;
+  --rk-muted-2: #94a19a;
+  --rk-green: #047857;
+  --rk-green-dark: #065f46;
+  --rk-green-soft: #ecfdf5;
+  --rk-focus: 0 0 0 3px #ecfdf5;
+  --rk-radius-sm: 9px;
+  --rk-radius-md: 12px;
+  --rk-radius-lg: 16px;
+  --rk-shadow: 0 10px 30px rgba(23, 33, 27, 0.055);
+}
+
+body {
+  color: var(--rk-text);
+  background: var(--rk-bg);
+}
+
+.content {
+  width: 100%;
+  max-width: 1540px;
+  margin: 0 auto;
+}
+
+.page-head,
+.dashboard-head,
+.tenant-directory-head,
+.units-page-head,
+.receipts-page-head {
+  margin-bottom: 22px;
+}
+
+.page-head h1,
+.dashboard-head h1,
+.tenant-directory-head h1,
+.units-page-head h1,
+.receipts-page-head h1 {
+  color: var(--rk-text) !important;
+  font-size: 25px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.75px !important;
+  line-height: 1.15 !important;
+}
+
+.page-head p,
+.dashboard-head p,
+.tenant-directory-head p,
+.units-page-head p,
+.receipts-page-head p {
+  color: var(--rk-muted) !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+.panel,
+.stat-card,
+.unit-card,
+.summary-grid > div,
+.monthly-summary-card,
+.monthly-summary-panel {
+  border-color: var(--rk-border);
+  border-radius: var(--rk-radius-md);
+  box-shadow: var(--rk-shadow);
+}
+
+.primary,
+.secondary,
+.small-btn {
+  min-height: 40px;
+  border-radius: var(--rk-radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.primary {
+  background: var(--rk-green);
+  border-color: var(--rk-green);
+  color: #fff;
+}
+
+.primary:hover {
+  background: var(--rk-green-dark);
+  border-color: var(--rk-green-dark);
+}
+
+.secondary,
+.small-btn {
+  background: var(--rk-surface);
+  border-color: var(--rk-border);
+  color: #405047;
+}
+
+.secondary:hover,
+.secondary.active,
+.small-btn:hover {
+  background: var(--rk-surface-soft);
+  border-color: #cbd8cf;
+  color: var(--rk-green-dark);
+}
+
+.content form input:not([type="checkbox"]):not([type="radio"]),
+.content form select,
+.content form textarea,
+.auth-card input,
+.tenant-filter-select select,
+.monthly-summary-month,
+.search,
+.maintenance-search-bar,
+.portal-month-control {
+  border: 1px solid var(--rk-border);
+  border-radius: var(--rk-radius-sm);
+  background: var(--rk-surface);
+  color: var(--rk-text);
+  outline: none;
+}
+
+.content form input:not([type="checkbox"]):not([type="radio"]),
+.content form select,
+.content form textarea,
+.auth-card input,
+.tenant-filter-select select,
+.monthly-summary-month {
+  min-height: 42px;
+  padding: 10px 11px;
+  font-size: 12px;
+}
+
+.content form textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.content form input:not([type="checkbox"]):not([type="radio"]):focus,
+.content form select:focus,
+.content form textarea:focus,
+.auth-card input:focus,
+.tenant-filter-select select:focus,
+.monthly-summary-month:focus,
+.search:focus-within,
+.maintenance-search-bar:focus-within {
+  border-color: #86c6b0;
+  box-shadow: var(--rk-focus);
+}
+
+.content form label,
+.auth-card label,
+.submeter-form label,
+.receipt-tool label {
+  color: #596b61;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.search,
+.maintenance-search-bar {
+  min-height: 42px;
+  box-shadow: 0 1px 2px rgba(23, 33, 27, 0.025);
+}
+
+.search input,
+.maintenance-search-bar input {
+  border: 0 !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+  background: transparent !important;
+  color: var(--rk-text);
+}
+
+.table-panel,
+.maintenance-table-panel,
+.receipts-table-panel {
+  border-color: var(--rk-border) !important;
+  border-radius: var(--rk-radius-md) !important;
+  box-shadow: var(--rk-shadow) !important;
+}
+
+th {
+  background: var(--rk-surface-soft);
+  color: #899891;
+}
+
+th,
+td {
+  border-bottom-color: var(--rk-border-soft);
+}
+
+tbody tr:hover {
+  background: #fbfdfb;
+}
+
+.form-note,
+.calculator-note,
+.tenant-access-settings-note {
+  border: 1px solid var(--rk-border-soft);
+  border-radius: var(--rk-radius-sm);
+  background: #f3f8f4;
+  color: #63736a;
+}
+
+.modal {
+  border-color: var(--rk-border);
+  border-radius: var(--rk-radius-lg);
+}
+
+.modal-head {
+  border-bottom-color: var(--rk-border-soft);
+}
+
+@media (max-width: 800px) {
+  .page-head,
+  .dashboard-head,
+  .tenant-directory-head,
+  .units-page-head,
+  .receipts-page-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .actions,
+  .monthly-summary-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .actions > button,
+  .monthly-summary-actions > button,
+  .monthly-summary-actions > input {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .content form input:not([type="checkbox"]):not([type="radio"]),
+  .content form select,
+  .content form textarea,
+  .auth-card input {
+    font-size: 13px;
+  }
+}

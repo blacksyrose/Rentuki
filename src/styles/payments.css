@@ -1,0 +1,15 @@
+/* Rentuki Payments styles */
+
+.form-note {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f5f7fb;
+  color: #647084;
+  font-size: 13px;
+}
+
+.form-note {
+  background: #f4f8f6;
+  border: 1px solid var(--rk-border-soft);
+  color: #61736b;
+}
