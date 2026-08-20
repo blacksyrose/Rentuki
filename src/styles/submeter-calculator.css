@@ -3,7 +3,7 @@
 .submeter-layout {
   display: grid;
   grid-template-columns: minmax(360px, 0.85fr) minmax(520px, 1.15fr);
-  gap: 18px;
+  gap: 20px;
   align-items: start;
 }
 
@@ -15,16 +15,18 @@
 
 .submeter-form label {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: #59677b;
+  color: #526158;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
 }
 
 .submeter-form label input:focus,
 .input-prefix:focus-within,
 .input-suffix:focus-within {
-  border-color: #8796ad;
-  box-shadow: 0 0 0 3px #eef2f7;
+  border-color: #8fc9ad;
+  box-shadow: 0 0 0 4px #ecfdf5;
+  background: #fff;
 }
 
 .input-prefix,
@@ -110,6 +112,7 @@
 
 .allocation-panel {
   min-height: 560px;
+  border-radius: 18px;
 }
 
 .allocation-heading {
@@ -369,58 +372,4 @@
     text-align: center;
   }
 
-}
-
-.form-grid label,
-.receipt-tool label,
-.submeter-form label {
-  color: #526158;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-}
-
-.form-grid input:focus,
-.form-grid select:focus,
-.form-grid textarea:focus,
-.receipt-tool select:focus,
-.submeter-form label input:focus {
-  border-color: #8fc9ad;
-  box-shadow: 0 0 0 4px #ecfdf5;
-  background: #fff;
-}
-
-.submeter-layout {
-  gap: 20px;
-}
-
-.allocation-panel {
-  border-radius: 18px;
-}
-
-.form-grid label,
-.receipt-tool label,
-.submeter-form label {
-  color: #526158;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-}
-
-.form-grid input:focus,
-.form-grid select:focus,
-.form-grid textarea:focus,
-.receipt-tool select:focus,
-.submeter-form label input:focus {
-  border-color: #8fc9ad;
-  box-shadow: 0 0 0 4px #ecfdf5;
-  background: #fff;
-}
-
-.submeter-layout {
-  gap: 20px;
-}
-
-.allocation-panel {
-  border-radius: 18px;
 }

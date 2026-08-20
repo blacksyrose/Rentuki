@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signIn, signUp } from "../lib/auth";
+import { Building2, Eye, EyeOff } from "lucide-react";
+import { signIn } from "../lib/auth";
 import { useToast } from "../components/Toast";
 
 export default function Login() {
-  const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
@@ -13,16 +14,8 @@ export default function Login() {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "login") {
-        await signIn(form.email, form.password);
-        navigate("/");
-      } else {
-        await signUp(form.email, form.password, form.name);
-        toast.success(
-          "Account created. Check your email if confirmation is enabled.",
-        );
-        setMode("login");
-      }
+      await signIn(form.email, form.password);
+      navigate("/");
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -33,25 +26,17 @@ export default function Login() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="brand large">
-          <div className="brand-mark">R</div>
+          <div className="brand-mark" aria-hidden="true">
+            <Building2 size={22} strokeWidth={2.2} />
+          </div>
           <div>
-            <strong>Rentuki</strong>
-            <small>Rental management System</small>
+            <strong>Rental Management System</strong>
+            <small>by Erika Ferolino</small>
           </div>
         </div>
-        <h1>{mode === "login" ? "Welcome back" : "Create your account"}</h1>
-        <p className="muted">Manage rental operations.</p>
+        <h1>Welcome back</h1>
+        <p className="muted">Sign in to manage your properties and tenants.</p>
         <form onSubmit={submit}>
-          {mode === "signup" && (
-            <label>
-              Full name
-              <input
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </label>
-          )}
           <label>
             Email
             <input
@@ -63,30 +48,33 @@ export default function Login() {
           </label>
           <label>
             Password
-            <input
-              type="password"
-              minLength="6"
-              required
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
+            <span className="password-input-wrap">
+              <input
+                type={showPassword ? "text" : "password"}
+                minLength="6"
+                required
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </span>
           </label>
           <button className="primary full" disabled={busy}>
-            {busy
-              ? "Please wait…"
-              : mode === "login"
-                ? "Sign in"
-                : "Create account"}
+            {busy ? "Please wait…" : "Sign in"}
           </button>
         </form>
-        <button
-          className="link-btn"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-        >
-          {mode === "login"
-            ? "Need an account? Create one"
-            : "Already have an account? Sign in"}
-        </button>
+        <p className="invite-notice">
+          <span aria-hidden="true">✉</span>
+          Access is invite-only. Ask an administrator to create your account.
+        </p>
       </div>
     </div>
   );

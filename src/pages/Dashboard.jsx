@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   Building2,
   CreditCard,
+  UserPlus,
   Users,
   Wrench,
   Receipt,
@@ -30,6 +31,14 @@ function formatDate(value) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 function getTenantName(tenant) {
@@ -327,8 +336,42 @@ export default function Dashboard() {
 
       <div className="page-head dashboard-head">
         <div>
-          <h1>Good afternoon, Admin</h1>
-          <p>Dash happening across your property today.</p>
+          <h1>{getTimeGreeting()}, Admin</h1>
+          <p>Here's what's happening with your properties today.</p>
+        </div>
+        <div className="actions dashboard-quick-actions">
+          <Link
+            to="/tenants"
+            className="icon-btn"
+            aria-label="Add tenant"
+            title="Add tenant"
+          >
+            <UserPlus size={17} />
+          </Link>
+          <Link
+            to="/units"
+            className="icon-btn"
+            aria-label="Add unit"
+            title="Add unit"
+          >
+            <Building2 size={17} />
+          </Link>
+          <Link
+            to="/payments"
+            className="icon-btn"
+            aria-label="Record payment"
+            title="Record payment"
+          >
+            <CreditCard size={17} />
+          </Link>
+          <Link
+            to="/maintenance"
+            className="icon-btn"
+            aria-label="Add expense"
+            title="Add expense"
+          >
+            <Wallet size={17} />
+          </Link>
         </div>
       </div>
 

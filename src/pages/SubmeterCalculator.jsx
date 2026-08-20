@@ -28,13 +28,13 @@ const money = (value) =>
     maximumFractionDigits: 2,
   }).format(Number(value) || 0);
 
-const pdfMoney = (value) => `PHP ${Number(value || 0).toFixed(2)}`;
-
 const number = (value, digits = 2) =>
   new Intl.NumberFormat("en-PH", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(Number(value) || 0);
+
+const pdfMoney = (value) => `PHP ${Number(value || 0).toFixed(2)}`;
 
 function calculate(form) {
   const totalBill = Number(form.totalBill);
@@ -93,6 +93,191 @@ function validate(result) {
   return "";
 }
 
+function buildSubmeterPdf(form, result) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const left = 14;
+  const contentWidth = pageWidth - left * 2;
+  let y = 18;
+  const colors = {
+    ink: [23, 32, 51],
+    muted: [122, 135, 153],
+    line: [229, 234, 241],
+    card: [248, 250, 252],
+    green: [35, 134, 77],
+    greenFill: [251, 254, 252],
+    greenLine: [220, 232, 223],
+    blueFill: [251, 252, 254],
+    blueLine: [229, 234, 241],
+  };
+  const setText = (color) => doc.setTextColor(...color);
+  const roundedBox = (x, top, width, height, fill, stroke) => {
+    doc.setFillColor(...fill);
+    doc.setDrawColor(...stroke);
+    doc.roundedRect(x, top, width, height, 2.5, 2.5, "FD");
+  };
+
+  setText(colors.muted);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.text("BILL OVERVIEW", left, y);
+  setText(colors.ink);
+  doc.setFontSize(18);
+  doc.text("SUBMETER BILL ALLOCATION", left, y + 7);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  setText(colors.muted);
+  doc.text("Electricity bill calculation and allocation", left, y + 13);
+  y += 22;
+
+  doc.setDrawColor(...colors.line);
+  doc.line(left, y, pageWidth - left, y);
+  y += 7;
+
+  const summaryGap = 3;
+  const summaryWidth = (contentWidth - summaryGap * 2) / 3;
+  const summaryItems = [
+    ["TOTAL BILL", pdfMoney(result.totalBill)],
+    ["TOTAL CONSUMPTION", `${number(result.totalConsumption)} kWh`],
+    ["RATE PER KWH", `PHP ${result.rate.toFixed(8)}`],
+  ];
+  summaryItems.forEach(([label, value], index) => {
+    const x = left + index * (summaryWidth + summaryGap);
+    roundedBox(x, y, summaryWidth, 18, colors.card, colors.line);
+    setText(colors.muted);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text(label, x + 3, y + 6);
+    setText(colors.ink);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(value, x + 3, y + 13);
+  });
+  y += 25;
+
+  const drawUnit = ({
+    unit,
+    tenant,
+    previous,
+    current,
+    consumption,
+    share,
+    includeReadings,
+    fill,
+    stroke,
+  }) => {
+    const unitHeight = includeReadings ? 37 : tenant ? 38 : 35;
+    roundedBox(left, y, contentWidth, unitHeight, fill, stroke);
+    const boxTop = y;
+    y += 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    setText(colors.muted);
+    doc.text(includeReadings ? "SUBMETER" : "REMAINING CONSUMPTION", left + 4, y);
+    y += 6;
+    setText(colors.ink);
+    doc.setFontSize(11);
+    doc.text(unit || "Unit", left + 4, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    if (tenant) {
+      setText(colors.muted);
+      doc.text(tenant, left + 4, y + 5);
+    }
+    const amountColor = Number(share) < 0 ? [185, 28, 28] : colors.ink;
+    setText(amountColor);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text(pdfMoney(share), pageWidth - left - 4, boxTop + 9, { align: "right" });
+    y = boxTop + (tenant ? 19 : 16);
+
+    if (includeReadings) {
+      const readingWidth = (contentWidth - 12) / 3;
+      const readings = [
+        ["PREVIOUS", `${number(previous)} kWh`],
+        ["CURRENT", `${number(current)} kWh`],
+        ["CONSUMPTION", `${number(consumption)} kWh`],
+      ];
+      readings.forEach(([label, value], index) => {
+        const x = left + 4 + index * (readingWidth + 2);
+        roundedBox(x, boxTop + 21, readingWidth, 13, [255, 255, 255], colors.line);
+        setText(colors.muted);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.text(label, x + 3, boxTop + 26);
+        setText(colors.ink);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text(value, x + 3, boxTop + 31);
+      });
+    } else {
+      roundedBox(left + 4, boxTop + 21, contentWidth - 8, 13, [255, 255, 255], colors.line);
+      setText(colors.muted);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.text("CONSUMPTION", left + 7, boxTop + 26);
+      setText(colors.ink);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text(`${number(consumption)} kWh`, left + 7, boxTop + 31);
+
+    }
+    y = boxTop + unitHeight + 8;
+  };
+
+  drawUnit({
+    unit: form.submeterUnit,
+    tenant: form.submeterTenant,
+    previous: result.previousReading,
+    current: result.currentReading,
+    consumption: result.submeterConsumption,
+    share: result.submeterShare,
+    includeReadings: true,
+    fill: colors.greenFill,
+    stroke: colors.greenLine,
+  });
+
+  drawUnit({
+    unit: form.otherUnit,
+    tenant: form.otherTenant,
+    consumption: result.otherConsumption,
+    share: result.otherShare,
+    includeReadings: false,
+    fill: colors.blueFill,
+    stroke: colors.blueLine,
+  });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  setText(colors.ink);
+  doc.text("TOTAL ALLOCATED", left + 4, y);
+  doc.setFontSize(13);
+  doc.text(pdfMoney(result.allocatedTotal), pageWidth - left - 4, y, { align: "right" });
+  y += 9;
+
+  roundedBox(left, y, contentWidth, 16, [233, 248, 239], [233, 248, 239]);
+  setText(colors.green);
+  doc.setDrawColor(...colors.green);
+  doc.setLineWidth(0.45);
+  doc.circle(left + 7, y + 8, 2.2, "S");
+  doc.line(left + 5.9, y + 8, left + 6.7, y + 8.8);
+  doc.line(left + 6.7, y + 8.8, left + 8.2, y + 7.1);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text("Allocation matches total bill", left + 12, y + 7);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.text(`${pdfMoney(result.allocatedTotal)} allocated from ${pdfMoney(result.totalBill)}`, left + 12, y + 12);
+  y += 25;
+  doc.setDrawColor(...colors.line);
+  doc.line(left, y, pageWidth - left, y);
+  setText(colors.muted);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.text(`Generated ${new Date().toLocaleString("en-PH")}`, left, y + 13);
+  doc.save(`submeter-billing-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
 export default function SubmeterCalculator() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [showErrors, setShowErrors] = useState(false);
@@ -116,134 +301,7 @@ export default function SubmeterCalculator() {
       setShowErrors(true);
       return;
     }
-
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const left = 20;
-    let y = 22;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text("RENTUKI", left, y);
-    y += 8;
-
-    doc.setFontSize(13);
-    doc.text("SUBMETER BILL ALLOCATION", left, y);
-    y += 5;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 110, 125);
-    doc.text("Electricity bill calculation and allocation", left, y);
-    doc.setTextColor(23, 32, 51);
-    y += 12;
-
-    const line = () => {
-      doc.setDrawColor(220, 225, 232);
-      doc.line(left, y, pageWidth - left, y);
-      y += 7;
-    };
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("BILL OVERVIEW", left, y);
-    y += 7;
-    doc.setFont("helvetica", "normal");
-    doc.text("Total Electricity Bill", left, y);
-    doc.text(pdfMoney(result.totalBill), pageWidth - left, y, {
-      align: "right",
-    });
-    y += 6;
-    doc.text("Total Consumption", left, y);
-    doc.text(`${number(result.totalConsumption)} kWh`, pageWidth - left, y, {
-      align: "right",
-    });
-    y += 6;
-    doc.text("Rate per kWh", left, y);
-    doc.text(`PHP ${result.rate.toFixed(8)}`, pageWidth - left, y, {
-      align: "right",
-    });
-    y += 4;
-    line();
-
-    const drawUnit = ({
-      unit,
-      tenant,
-      previous,
-      current,
-      consumption,
-      share,
-      includeReadings,
-    }) => {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text(unit || "Unit", left, y);
-      y += 6;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      if (tenant) {
-        doc.text(`Tenant: ${tenant}`, left, y);
-        y += 5;
-      }
-      if (includeReadings) {
-        doc.text("Previous Reading", left, y);
-        doc.text(`${number(previous)} kWh`, pageWidth - left, y, {
-          align: "right",
-        });
-        y += 5;
-        doc.text("Current Reading", left, y);
-        doc.text(`${number(current)} kWh`, pageWidth - left, y, {
-          align: "right",
-        });
-        y += 5;
-      }
-      doc.text("Consumption", left, y);
-      doc.text(`${number(consumption)} kWh`, pageWidth - left, y, {
-        align: "right",
-      });
-      y += 5;
-      doc.text("Amount to Pay", left, y);
-      doc.setFont("helvetica", "bold");
-      doc.text(pdfMoney(share), pageWidth - left, y, { align: "right" });
-      doc.setFont("helvetica", "normal");
-      y += 9;
-      line();
-    };
-
-    drawUnit({
-      unit: form.submeterUnit,
-      tenant: form.submeterTenant,
-      previous: result.previousReading,
-      current: result.currentReading,
-      consumption: result.submeterConsumption,
-      share: result.submeterShare,
-      includeReadings: true,
-    });
-
-    drawUnit({
-      unit: form.otherUnit,
-      tenant: form.otherTenant,
-      consumption: result.otherConsumption,
-      share: result.otherShare,
-      includeReadings: false,
-    });
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("TOTAL ALLOCATED", left, y);
-    doc.text(pdfMoney(result.allocatedTotal), pageWidth - left, y, {
-      align: "right",
-    });
-    y += 8;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(35, 134, 77);
-    doc.text("✓ Allocation matches total bill", left, y);
-    doc.setTextColor(100, 110, 125);
-    y += 12;
-    doc.text(`Generated ${new Date().toLocaleString("en-PH")}`, left, y);
-    doc.save(`submeter-billing-${new Date().toISOString().slice(0, 10)}.pdf`);
+    buildSubmeterPdf(form, result);
   };
 
   const printPage = () => {
@@ -291,7 +349,7 @@ export default function SubmeterCalculator() {
           <div className="panel-head">
             <div>
               <h2>
-                <Calculator size={17} /> Calculator Inputs
+                <Calculator size={17} /> Bill Allocation
               </h2>
               <p>
                 Enter the current electricity bill and the submeter reading.
@@ -399,8 +457,7 @@ export default function SubmeterCalculator() {
           <div className="calculator-note">
             <strong>No database changes</strong>
             <span>
-              This calculator is temporary. Clearing the page removes the
-              calculation from memory.
+              This calculates the exact consumption of each tenant.
             </span>
           </div>
         </section>
@@ -502,7 +559,7 @@ export default function SubmeterCalculator() {
             </>
           )}
 
-          <div className="print-footer">Rentuki • Submeter Bill Allocation</div>
+          <div className="print-footer"> • Submeter Bill Allocation</div>
         </section>
       </div>
     </div>

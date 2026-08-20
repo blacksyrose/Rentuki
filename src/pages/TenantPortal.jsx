@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
+  ClipboardPaste,
+  CircleDollarSign,
   Clock3,
+  ExternalLink,
   KeyRound,
   LogOut,
   ReceiptText,
@@ -11,6 +14,43 @@ import { db } from "../services/db";
 import { currentMonth, dateLabel, money } from "../lib/utils";
 
 const STORAGE_KEY = "rentuki_tenant_portal_key";
+
+const previewSummary = {
+  property_name: "Rental Management System",
+  tenant: {
+    first_name: "Erika",
+    last_name: "Ferolino",
+  },
+  current_tenancy: {
+    unit_number: "204",
+    monthly_rent: 15000,
+    payment_due_day: 5,
+    start_date: "2026-01-05",
+  },
+  billing: {
+    amount_due: 15000,
+    status: "due",
+  },
+  payments: [
+    {
+      id: "preview-payment-1",
+      payment_date: "2026-07-05",
+      amount: 15000,
+      payment_method: "GCash",
+      receipt_number: "REC-1001",
+      unit_number: "204",
+    },
+  ],
+  unit_history: [
+    {
+      id: "preview-tenancy-1",
+      unit_number: "204",
+      start_date: "2026-01-05",
+      monthly_rent: 15000,
+      status: "active",
+    },
+  ],
+};
 
 function monthLabel(value) {
   const date = new Date(`${value}-01T00:00:00`);
@@ -31,6 +71,9 @@ function hasObjectData(value) {
 }
 
 export default function TenantPortal() {
+  const isPreview =
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get("preview") === "1";
   const [accessKey, setAccessKey] = useState(() => {
     try {
       return sessionStorage.getItem(STORAGE_KEY) || "";
@@ -83,6 +126,8 @@ export default function TenantPortal() {
   };
 
   useEffect(() => {
+    if (isPreview) return;
+
     if (!accessKey) {
       setLoading(false);
       return;
@@ -90,7 +135,7 @@ export default function TenantPortal() {
 
     loadSummary(accessKey, month);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessKey]);
+  }, [accessKey, isPreview]);
 
   const signOut = () => {
     try {
@@ -119,14 +164,19 @@ export default function TenantPortal() {
     setAccessKey(normalized);
   };
 
-  const tenant = summary?.tenant || {};
-  const tenancy = hasObjectData(summary?.current_tenancy)
-    ? summary.current_tenancy
+  const portalSummary = isPreview ? previewSummary : summary;
+  const tenant = portalSummary?.tenant || {};
+  const tenancy = hasObjectData(portalSummary?.current_tenancy)
+    ? portalSummary.current_tenancy
     : null;
-  const billing = hasObjectData(summary?.billing) ? summary.billing : null;
-  const payments = Array.isArray(summary?.payments) ? summary.payments : [];
-  const history = Array.isArray(summary?.unit_history)
-    ? summary.unit_history
+  const billing = hasObjectData(portalSummary?.billing)
+    ? portalSummary.billing
+    : null;
+  const payments = Array.isArray(portalSummary?.payments)
+    ? portalSummary.payments
+    : [];
+  const history = Array.isArray(portalSummary?.unit_history)
+    ? portalSummary.unit_history
     : [];
 
   const paid = useMemo(
@@ -176,28 +226,19 @@ export default function TenantPortal() {
         : billing?.status
           ? String(billing.status).replaceAll("_", " ")
           : "Not generated";
-
-  if (!accessKey || !summary) {
+  if (!isPreview && (!accessKey || !summary)) {
     return (
       <div className="portal-page portal-login-page">
         <div className="portal-login-shell">
-          <div className="portal-login-brand">
-            <div className="portal-brand-mark">
-              <Building2 size={22} />
-            </div>
-            <div>
-              <strong>Rentuki</strong>
-              <span>Tenant Portal</span>
-            </div>
-          </div>
-
           <section className="portal-login-card portal-login-card-simple">
-            <div className="portal-login-icon">
-              <ShieldCheck size={28} />
-            </div>
+            <div className="portal-login-heading">
+              <div className="portal-login-icon">
+                <ShieldCheck size={28} />
+              </div>
 
-            <span className="portal-login-title">Rental Summary</span>
-            <p className="portal-login-subtitle">Private tenant access</p>
+              <span className="portal-login-title">Rental Summary</span>
+              <p className="portal-login-subtitle">Private tenant access</p>
+            </div>
 
             <div className="portal-login-info">
               <ShieldCheck size={15} />
@@ -219,10 +260,29 @@ export default function TenantPortal() {
                       setKeyInput(event.target.value.toUpperCase());
                       setError("");
                     }}
-                    placeholder="TENANT-7XK9-42PM"
+                    placeholder="TENANT-XXXX-XXXX"
                     autoComplete="off"
                     spellCheck="false"
                   />
+                  <button
+                    type="button"
+                    className="portal-paste-button"
+                    aria-label="Paste access key"
+                    title="Paste access key"
+                    onClick={async () => {
+                      try {
+                        const pasted = await navigator.clipboard.readText();
+                        setKeyInput(pasted.toUpperCase());
+                        setError("");
+                      } catch {
+                        setError(
+                          "Clipboard access is unavailable. Please paste the key manually.",
+                        );
+                      }
+                    }}
+                  >
+                    <ClipboardPaste size={17} />
+                  </button>
                 </div>
               </label>
 
@@ -233,9 +293,12 @@ export default function TenantPortal() {
                 type="submit"
                 disabled={loading}
               >
-                {loading ? "Checking key…" : "View my summary"}
+                {loading ? "Checking key…" : "Access Portal"}
               </button>
             </form>
+            <p className="portal-private-note">
+              🔒 Your access key is private and should not be shared.
+            </p>
           </section>
         </div>
       </div>
@@ -243,7 +306,7 @@ export default function TenantPortal() {
   }
 
   const firstName = tenant.first_name || tenant.full_name || "Tenant";
-  const propertyName = summary.property_name || "Rentuki";
+  const propertyName = portalSummary.property_name || "Rentuki";
 
   return (
     <div className="portal-page portal-dashboard-page">
@@ -275,6 +338,7 @@ export default function TenantPortal() {
 
           <div>
             <span>Current unit</span>
+            <Building2 size={17} />
             <strong>
               {tenancy?.unit_number
                 ? `Unit ${tenancy.unit_number}`
@@ -289,6 +353,7 @@ export default function TenantPortal() {
 
           <div>
             <span>Monthly rent</span>
+            <CircleDollarSign size={17} />
             <strong>{money(tenancy?.monthly_rent || 0)}</strong>
             <small>
               {tenancy?.payment_due_day
@@ -299,8 +364,13 @@ export default function TenantPortal() {
 
           <div>
             <span>{monthLabel(month)} balance</span>
+            <CircleDollarSign size={17} />
             <strong>{money(balance)}</strong>
-            <small>{status}</small>
+            <small
+              className={`portal-balance-status ${status.toLowerCase().replaceAll(" ", "-")}`}
+            >
+              <span /> {status}
+            </small>
           </div>
         </section>
 
@@ -409,6 +479,13 @@ export default function TenantPortal() {
             </div>
           )}
         </section>
+
+        <footer className="portal-support-note">
+          <strong>
+            For payment concerns, maintenance requests, or account questions,
+            contact your landlord.
+          </strong>
+        </footer>
       </main>
     </div>
   );

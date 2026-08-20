@@ -17,6 +17,110 @@
   --rk-radius-md: 12px;
   --rk-radius-lg: 16px;
   --rk-shadow: 0 10px 30px rgba(23, 33, 27, 0.055);
+  --rk-motion-fast: 140ms;
+  --rk-motion-base: 220ms;
+  --rk-motion-slow: 320ms;
+  --rk-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+.panel,
+.stat-card,
+.unit-card,
+.summary-grid > div,
+.monthly-summary-card,
+.monthly-summary-panel,
+.search,
+.maintenance-search-bar,
+.topbar-dropdown,
+.modal,
+.toast {
+  transition:
+    background-color var(--rk-motion-fast) ease,
+    border-color var(--rk-motion-fast) ease,
+    color var(--rk-motion-fast) ease,
+    box-shadow var(--rk-motion-base) ease,
+    opacity var(--rk-motion-base) ease,
+    transform var(--rk-motion-base) var(--rk-ease);
+}
+
+button:hover:not(:disabled),
+a:hover,
+.panel-link:hover,
+.topbar-dropdown button:hover {
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled),
+a:active {
+  transform: translateY(0);
+}
+
+.content > * {
+  animation: rk-page-enter var(--rk-motion-slow) var(--rk-ease) both;
+}
+
+.modal-backdrop {
+  animation: rk-fade-in var(--rk-motion-base) ease both;
+}
+
+.modal,
+.toast {
+  animation: rk-surface-enter var(--rk-motion-slow) var(--rk-ease) both;
+}
+
+@keyframes rk-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rk-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rk-surface-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {

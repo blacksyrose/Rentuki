@@ -239,11 +239,69 @@
   letter-spacing: -0.6px;
 }
 
+.invite-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 16px 0 0;
+  padding: 7px 9px;
+  border: 1px solid var(--rk-border);
+  border-radius: 6px;
+  background: #f8fbf9;
+  color: #75837c;
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.invite-notice span {
+  flex: none;
+  color: var(--rk-green);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .auth-card input {
   min-height: 44px;
   border-radius: 11px;
   border-color: var(--rk-border);
   background: #fbfdfb;
+}
+
+.password-input-wrap {
+  display: block;
+  position: relative;
+}
+
+.password-input-wrap input {
+  padding-right: 42px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #82918a;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: var(--rk-green-soft);
+  color: var(--rk-green-dark);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid #8fc9ad;
+  outline-offset: 1px;
 }
 
 .auth-card input:focus {

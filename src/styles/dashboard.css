@@ -36,6 +36,27 @@
   margin-bottom: 20px;
 }
 
+.dashboard-quick-actions {
+  gap: 5px;
+}
+
+.dashboard-quick-actions .icon-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--rk-border);
+  background: #fff;
+  color: var(--rk-green-dark);
+}
+
+.dashboard-quick-actions .icon-btn:hover {
+  border-color: #9bcdb8;
+  background: var(--rk-green-soft);
+  color: var(--rk-green-dark);
+}
+
 .dashboard-head h1 {
   font-size: 25px;
   font-weight: 800;
