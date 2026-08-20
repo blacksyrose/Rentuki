@@ -264,12 +264,8 @@ export default function Units() {
                   </div>
 
                   <div className="unit-utility-value">
-                    <span>
-                      {u.electricity_meter_type === "submeter"
-                        ? "Submeter"
-                        : "Direct"}
-                    </span>
-                    <small>{u.electricity_can || "No CAN"}</small>
+                    <span>{u.electricity_can || "No CAN"}</span>
+                    <small>{u.electricity_bill_name || "No bill name"}</small>
                   </div>
                 </div>
 
