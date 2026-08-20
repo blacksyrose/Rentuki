@@ -220,13 +220,9 @@ export default function Tenants() {
         throw new Error("First name is required.");
       }
 
-      if (!lastName) {
-        throw new Error("Last name is required.");
-      }
-
       await db.tenants.update(selectedTenant.id, {
         first_name: firstName,
-        last_name: lastName,
+        last_name: lastName || null,
         phone: editTenantForm.phone.trim() || null,
         email: editTenantForm.email.trim() || null,
         address: editTenantForm.address.trim() || null,
@@ -753,7 +749,6 @@ export default function Tenants() {
           <label>
             Last name
             <input
-              required
               value={form.last_name}
               onChange={(e) =>
                 setForm({
@@ -1120,7 +1115,6 @@ export default function Tenants() {
           <label>
             Last name
             <input
-              required
               value={editTenantForm.last_name}
               onChange={(e) =>
                 setEditTenantForm({
