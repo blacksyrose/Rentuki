@@ -185,7 +185,7 @@ export default function Receipts() {
                       </td>
 
                       {/* Date */}
-                      <td>{dateLabel(payment.payment_date)}</td>
+                      <td>{receiptDateLabel(payment)}</td>
 
                       {/* Tenant */}
                       <td>
@@ -296,7 +296,7 @@ export default function Receipts() {
 
                       return (
                         <option key={payment.id} value={payment.id}>
-                          {dateLabel(payment.payment_date)} —{" "}
+                          {receiptDateLabel(payment)} —{" "}
                           {tenantName || "Tenant"} —{" "}
                           {formatMoney(payment.amount)}
                         </option>
@@ -340,7 +340,7 @@ export default function Receipts() {
                       <div>
                         <span>Date</span>
                         <strong>
-                          {dateLabel(selectedPayment.payment_date)}
+                          {receiptDateLabel(selectedPayment)}
                         </strong>
                       </div>
 
@@ -502,7 +502,7 @@ async function generateReceipt({ payment, payments, properties, toast }) {
     drawField(
       doc,
       "Date:",
-      dateLabel(payment.payment_date),
+      receiptDateLabel(payment),
       leftX,
       42,
       valueOffset,
@@ -628,7 +628,9 @@ async function generateReceipt({ payment, payments, properties, toast }) {
     const safeTenant =
       tenantName.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "") || "Tenant";
 
-    const safeDate = String(payment.payment_date || "").replace(/-/g, "");
+    const safeDate = formatReceiptDate(
+      payment.payment_date || payment.billing_records?.billing_month,
+    );
 
     doc.save(`Receipt_${safeDate}_${safeTenant}.pdf`);
 
@@ -645,7 +647,6 @@ async function generateReceipt({ payment, payments, properties, toast }) {
 /* ========================================================================== */
 
 function getReceiptNumber(payment, payments = []) {
-  const paymentDate = String(payment?.payment_date || "");
   const month = getPaymentMonth(payment);
   const paymentGroup = (payments || [])
     .filter((item) => {
@@ -663,7 +664,22 @@ function getReceiptNumber(payment, payments = []) {
 
   const unitNumber = payment?.tenancies?.units?.unit_number || "-";
 
-  return `RCPT-${formatReceiptMonth(paymentDate)}${unitNumber}-${sequence}`;
+  return `RCPT-${formatReceiptMonth(month)}${unitNumber}-${sequence}`;
+}
+
+function receiptDateLabel(payment) {
+  if (payment?.payment_date) return dateLabel(payment.payment_date);
+
+  const billingMonth = String(payment?.billing_records?.billing_month || "");
+
+  if (/^\d{4}-\d{2}/.test(billingMonth)) {
+    return new Date(`${billingMonth.slice(0, 7)}-01T00:00:00`).toLocaleDateString(
+      "en-US",
+      { month: "long", year: "numeric" },
+    );
+  }
+
+  return "Date not recorded";
 }
 
 function getPaymentMonth(payment) {
