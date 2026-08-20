@@ -16,6 +16,21 @@ import { useAsync } from "../hooks/useData";
 import { money, dateLabel } from "../lib/utils";
 import { useToast } from "../components/Toast";
 
+function compareUnitNumbers(left, right) {
+  const leftText = String(left?.unit_number ?? "").trim();
+  const rightText = String(right?.unit_number ?? "").trim();
+  const leftNumber = Number(leftText);
+  const rightNumber = Number(rightText);
+  const leftIsNumeric = leftText !== "" && Number.isFinite(leftNumber);
+  const rightIsNumeric = rightText !== "" && Number.isFinite(rightNumber);
+
+  if (leftIsNumeric && rightIsNumeric) return leftNumber - rightNumber;
+  if (leftIsNumeric) return -1;
+  if (rightIsNumeric) return 1;
+
+  return leftText.localeCompare(rightText, undefined, { numeric: true });
+}
+
 export default function Tenants() {
   const { data, loading, refresh } = useAsync(() => db.tenants.list(), []);
 
@@ -1474,6 +1489,7 @@ export default function Tenants() {
                     u.status === "available" &&
                     u.id !== transferringTenancy?.unit_id,
                 )
+                .sort(compareUnitNumbers)
                 .map((u) => (
                   <option key={u.id} value={u.id}>
                     Unit {u.unit_number}
@@ -1618,6 +1634,7 @@ export default function Tenants() {
 
               {(units || [])
                 .filter((u) => u.status === "available")
+                .sort(compareUnitNumbers)
                 .map((u) => (
                   <option key={u.id} value={u.id}>
                     Unit {u.unit_number}
