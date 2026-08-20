@@ -646,7 +646,7 @@ export async function recordPayment({
     tenancy_id: tenancyId,
     payment_type: type,
     amount: paymentAmount,
-    payment_date: paymentDate,
+    payment_date: paymentDate || null,
     payment_method: normalizePaymentMethod(paymentMethod),
     reference_number: cleanText(referenceNumber),
     notes: cleanText(notes),
@@ -705,7 +705,7 @@ export async function updatePayment(idOrOptions, maybePayload) {
   }
 
   if (payload.payment_date !== undefined) {
-    cleaned.payment_date = payload.payment_date;
+    cleaned.payment_date = payload.payment_date || null;
   }
 
   if (payload.payment_method !== undefined) {

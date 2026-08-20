@@ -76,7 +76,7 @@ export default function Payments() {
     tenant_id: "",
     tenancy_id: "",
     amount: "",
-    payment_date: new Date().toISOString().slice(0, 10),
+    payment_date: "",
     payment_method: "Cash",
     notes: "",
   });
@@ -96,7 +96,7 @@ export default function Payments() {
       tenant_id: "",
       tenancy_id: "",
       amount: "",
-      payment_date: new Date().toISOString().slice(0, 10),
+      payment_date: "",
       payment_method: "Cash",
       notes: "",
     });
@@ -135,7 +135,7 @@ export default function Payments() {
       tenant_id: tenantId,
       tenancy_id: tenancyId,
       amount: remainingBalance(billingRecord),
-      payment_date: new Date().toISOString().slice(0, 10),
+      payment_date: "",
       payment_method: "Cash",
       notes: "",
     });
@@ -150,7 +150,7 @@ export default function Payments() {
       tenant_id: "",
       tenancy_id: "",
       amount: "",
-      payment_date: new Date().toISOString().slice(0, 10),
+      payment_date: "",
       payment_method: "Cash",
       notes: "",
     });
@@ -165,8 +165,7 @@ export default function Payments() {
       tenant_id: billingRecord.tenancies?.tenant_id || "",
       tenancy_id: billingRecord.tenancy_id || "",
       amount: Number(payment.amount || 0),
-      payment_date:
-        payment.payment_date || new Date().toISOString().slice(0, 10),
+      payment_date: payment.payment_date || "",
       payment_method: payment.payment_method || "Cash",
       notes: payment.notes || "",
     });
@@ -210,7 +209,7 @@ export default function Payments() {
       if (editingPayment) {
         await updatePayment(editingPayment.id, {
           amount,
-          payment_date: form.payment_date,
+          payment_date: form.payment_date || null,
           payment_method: form.payment_method,
           notes: form.notes,
           payment_type: type,
@@ -247,7 +246,7 @@ export default function Payments() {
           tenantId: form.tenant_id,
           tenancyId: form.tenancy_id,
           amount,
-          paymentDate: form.payment_date,
+          paymentDate: form.payment_date || null,
           paymentMethod: form.payment_method,
           notes: form.notes,
         });
@@ -260,7 +259,7 @@ export default function Payments() {
           tenantId: form.tenant_id,
           tenancyId: form.tenancy_id,
           amount,
-          paymentDate: form.payment_date,
+          paymentDate: form.payment_date || null,
           paymentMethod: form.payment_method,
           notes: form.notes,
         });
@@ -557,7 +556,6 @@ export default function Payments() {
             Payment date
             <input
               type="date"
-              required
               value={form.payment_date}
               onChange={(event) =>
                 setForm({ ...form, payment_date: event.target.value })

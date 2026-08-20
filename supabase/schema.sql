@@ -4305,7 +4305,7 @@ CREATE TABLE public.payments (
     tenant_id uuid NOT NULL,
     tenancy_id uuid NOT NULL,
     amount numeric(12,2) NOT NULL,
-    payment_date date DEFAULT CURRENT_DATE NOT NULL,
+    payment_date date DEFAULT CURRENT_DATE,
     payment_method text DEFAULT 'Cash'::text NOT NULL,
     reference_number text,
     notes text,
