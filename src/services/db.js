@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import { billingDueDate, currentMonth } from "../lib/utils";
+import { billingDueDate, compareUnitNumbers, currentMonth } from "../lib/utils";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -149,14 +149,15 @@ export const db = {
   /* ------------------------------------------------------------------------ */
 
   units: {
-    list: (propertyId) => {
+    list: async (propertyId) => {
       let query = supabase.from("units").select("*").order("unit_number");
 
       if (propertyId) {
         query = query.eq("property_id", propertyId);
       }
 
-      return unwrap(query);
+      const units = await unwrap(query);
+      return [...(units || [])].sort(compareUnitNumbers);
     },
 
     create: async (payload) => {

@@ -12,7 +12,7 @@ import {
   deletePayment,
 } from "../services/db";
 import { useAsync } from "../hooks/useData";
-import { currentMonth, money, monthLabel } from "../lib/utils";
+import { compareUnitNumbers, currentMonth, money, monthLabel } from "../lib/utils";
 import { useToast } from "../components/Toast";
 
 function paidAmount(record) {
@@ -52,6 +52,8 @@ function tenantName(tenant) {
 function activeTenancies(tenant) {
   return (tenant?.tenancies || []).filter(
     (tenancy) => tenancy.status === "active" && !tenancy.end_date,
+  ).sort((left, right) =>
+    compareUnitNumbers(left.units, right.units),
   );
 }
 
@@ -342,7 +344,14 @@ export default function Payments() {
             </thead>
 
             <tbody>
-              {(bill.data || []).map((record) => {
+              {[...(bill.data || [])]
+                .sort((left, right) =>
+                  compareUnitNumbers(
+                    left.tenancies?.units,
+                    right.tenancies?.units,
+                  ),
+                )
+                .map((record) => {
                 const paid = paidAmount(record);
                 const balance = Math.max(
                   Number(record.amount_due || 0) - paid,
@@ -405,7 +414,7 @@ export default function Payments() {
                     </td>
                   </tr>
                 );
-              })}
+                })}
             </tbody>
           </table>
 

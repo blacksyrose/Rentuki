@@ -13,23 +13,8 @@ import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
-import { money, dateLabel } from "../lib/utils";
+import { compareUnitNumbers, money, dateLabel } from "../lib/utils";
 import { useToast } from "../components/Toast";
-
-function compareUnitNumbers(left, right) {
-  const leftText = String(left?.unit_number ?? "").trim();
-  const rightText = String(right?.unit_number ?? "").trim();
-  const leftNumber = Number(leftText);
-  const rightNumber = Number(rightText);
-  const leftIsNumeric = leftText !== "" && Number.isFinite(leftNumber);
-  const rightIsNumeric = rightText !== "" && Number.isFinite(rightNumber);
-
-  if (leftIsNumeric && rightIsNumeric) return leftNumber - rightNumber;
-  if (leftIsNumeric) return -1;
-  if (rightIsNumeric) return 1;
-
-  return leftText.localeCompare(rightText, undefined, { numeric: true });
-}
 
 export default function Tenants() {
   const { data, loading, refresh } = useAsync(() => db.tenants.list(), []);
@@ -118,7 +103,12 @@ export default function Tenants() {
       `${t.first_name} ${t.last_name} ${t.phone || ""} ${t.email || ""}`
         .toLowerCase()
         .includes(q.toLowerCase()),
-    );
+    )
+    .sort((left, right) => {
+      const leftUnit = (left.tenancies || []).find((tenancy) => tenancy.status === "active")?.units;
+      const rightUnit = (right.tenancies || []).find((tenancy) => tenancy.status === "active")?.units;
+      return compareUnitNumbers(leftUnit, rightUnit);
+    });
 
 
   const tenantBalanceMap = useMemo(() => {

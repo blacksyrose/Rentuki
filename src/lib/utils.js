@@ -15,6 +15,24 @@ export const monthLabel = (value) => {
 
 export const currentMonth = () => format(new Date(), 'yyyy-MM')
 
+export const compareUnitNumbers = (left, right) => {
+  const leftText = String(left?.unit_number ?? left ?? '').trim()
+  const rightText = String(right?.unit_number ?? right ?? '').trim()
+  const leftNumber = Number(leftText)
+  const rightNumber = Number(rightText)
+  const leftIsNumeric = leftText !== '' && Number.isFinite(leftNumber)
+  const rightIsNumeric = rightText !== '' && Number.isFinite(rightNumber)
+
+  if (leftIsNumeric && rightIsNumeric) return leftNumber - rightNumber
+  if (leftIsNumeric) return -1
+  if (rightIsNumeric) return 1
+
+  return leftText.localeCompare(rightText, undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  })
+}
+
 export const billingDueDate = (billingMonth, dueDay) => {
   const [year, month] = billingMonth.split('-').map(Number)
   const lastDay = new Date(year, month, 0).getDate()

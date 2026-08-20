@@ -5,7 +5,7 @@ import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
-import { money } from "../lib/utils";
+import { compareUnitNumbers, money } from "../lib/utils";
 import { useToast } from "../components/Toast";
 
 const emptyMaintenanceForm = () => ({
@@ -680,7 +680,7 @@ export default function Maintenance() {
               >
                 <option value="">Select unit</option>
 
-                {(units.data || []).map((u) => (
+                {[...(units.data || [])].sort(compareUnitNumbers).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.unit_number}
                   </option>
@@ -903,7 +903,7 @@ export default function Maintenance() {
               >
                 <option value="">Property-wide</option>
 
-                {(units.data || []).map((u) => (
+                {[...(units.data || [])].sort(compareUnitNumbers).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.unit_number}
                   </option>

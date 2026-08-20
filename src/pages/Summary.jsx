@@ -3,39 +3,7 @@ import { Download, FileText, Receipt, Wallet } from "lucide-react";
 import EmptyState from "../components/EmptyState";
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
-import { currentMonth, money, csvDownload } from "../lib/utils";
-
-function unitSortValue(value) {
-  const text = String(value ?? "").trim();
-  const numeric = Number(text);
-
-  if (text !== "" && Number.isFinite(numeric)) {
-    return { numeric: true, value: numeric, text };
-  }
-
-  return {
-    numeric: false,
-    value: Number.POSITIVE_INFINITY,
-    text: text.toLowerCase(),
-  };
-}
-
-function compareUnitNumbers(a, b) {
-  const left = unitSortValue(a);
-  const right = unitSortValue(b);
-
-  if (left.numeric && right.numeric) {
-    return left.value - right.value;
-  }
-
-  if (left.numeric) return -1;
-  if (right.numeric) return 1;
-
-  return left.text.localeCompare(right.text, undefined, {
-    numeric: true,
-    sensitivity: "base",
-  });
-}
+import { compareUnitNumbers, currentMonth, money, csvDownload } from "../lib/utils";
 
 export default function Summary() {
   const [month, setMonth] = useState(currentMonth());
