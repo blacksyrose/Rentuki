@@ -221,13 +221,15 @@ export default function Payments() {
         if (!selected) throw new Error("Billing record is required.");
 
         const billingMonth = String(selected.billing_month || "").slice(0, 7);
+        const paymentMonth = String(form.payment_date || "").slice(0, 7);
 
         if (
           billingMonth &&
-          String(form.payment_date).slice(0, 7) !== billingMonth
+          paymentMonth &&
+          paymentMonth < billingMonth
         ) {
           throw new Error(
-            `Payment date must stay within the billing month (${billingMonth}).`,
+            `Payment date cannot be before the billing month (${billingMonth}).`,
           );
         }
 
