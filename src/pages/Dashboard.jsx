@@ -18,6 +18,7 @@ import { useAsync } from "../hooks/useData";
 import { currentMonth, money } from "../lib/utils";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
+import EmptyState from "../components/EmptyState";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -731,10 +732,12 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="empty dashboard-empty">
-              <Receipt size={24} />
-              <span>No expenses recorded this month.</span>
-            </div>
+            <EmptyState
+              icon={Receipt}
+              title="No expenses recorded yet"
+              message="Monthly expenses will appear here."
+              className="dashboard-empty"
+            />
           )}
         </section>
 
@@ -795,10 +798,12 @@ export default function Dashboard() {
                 );
               })
             ) : (
-              <div className="empty dashboard-empty">
-                <CreditCard size={24} />
-                <span>No payments recorded yet.</span>
-              </div>
+              <EmptyState
+                icon={CreditCard}
+                title="No payments recorded yet"
+                message="Recorded payments will appear here."
+                className="dashboard-empty"
+              />
             )}
           </div>
         </section>
@@ -849,10 +854,12 @@ export default function Dashboard() {
                 </div>
               ))
             ) : (
-              <div className="empty dashboard-empty">
-                <Wrench size={24} />
-                <span>No maintenance requests yet.</span>
-              </div>
+              <EmptyState
+                icon={Wrench}
+                title="No maintenance requests yet"
+                message="Open requests will appear here."
+                className="dashboard-empty"
+              />
             )}
           </div>
         </section>

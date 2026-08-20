@@ -1,5 +1,42 @@
 /* Rentuki Payments styles */
 
+.payment-action-wrap {
+  position: relative;
+}
+
+.payment-action-button {
+  white-space: nowrap;
+}
+
+.payment-action-menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 12;
+  display: grid;
+  min-width: 165px;
+  padding: 5px;
+  border: 1px solid var(--rk-border);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(23, 33, 27, 0.12);
+}
+
+.payment-action-menu button {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--rk-text);
+  padding: 9px 10px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.payment-action-menu button:hover {
+  background: var(--rk-green-wash);
+  color: var(--rk-green-dark);
+}
+
 .form-note {
   padding: 12px;
   border-radius: 8px;

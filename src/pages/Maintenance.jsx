@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, Receipt, Search, Trash2, Wrench } from "lucide-react";
 import Modal from "../components/Modal";
+import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
@@ -546,9 +547,11 @@ export default function Maintenance() {
                   {!maintenanceRows.length && (
                     <tr>
                       <td colSpan="8" className="maintenance-empty-row">
-                        {search
-                          ? "No maintenance requests match your search."
-                          : "No maintenance requests yet."}
+                        <EmptyState
+                          icon={Wrench}
+                          title={search ? "No requests found" : "No maintenance requests yet"}
+                          message={search ? "Try a different search." : "Open requests will appear here."}
+                        />
                       </td>
                     </tr>
                   )}
@@ -642,9 +645,11 @@ export default function Maintenance() {
                   {!expenseRows.length && (
                     <tr>
                       <td colSpan="7" className="maintenance-empty-row">
-                        {search
-                          ? "No expenses match your search."
-                          : "No expenses recorded yet."}
+                        <EmptyState
+                          icon={Receipt}
+                          title={search ? "No expenses found" : "No expenses recorded yet"}
+                          message={search ? "Try a different search." : "Recorded expenses will appear here."}
+                        />
                       </td>
                     </tr>
                   )}

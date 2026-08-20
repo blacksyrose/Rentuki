@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   CheckCircle2,
   Copy,
@@ -17,6 +18,7 @@ import { db, importExpenses, importPayments } from "../services/db";
 import { csvDownload } from "../lib/utils";
 import { useAsync } from "../hooks/useData";
 import { useToast } from "../components/Toast";
+import EmptyState from "../components/EmptyState";
 
 function generateAccessKey() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -495,7 +497,7 @@ function ReportsSection() {
         <div className="panel"><h2>Expense report</h2><p>Expenses by date, category and unit.</p><button className="secondary" onClick={() => exportRows("expense-report", (expenses.data || []).map((expense) => ({ date: expense.expense_date, category: expense.category, description: expense.description, amount: expense.amount, unit: expense.units?.unit_number || "", vendor: expense.vendor || "" })))}><Download size={15} /> Export CSV</button></div>
       </div>
 
-      {importOpen && (
+      {importOpen && createPortal(
         <div className="modal-backdrop">
           <div className="modal report-import-modal">
             <div className="modal-head"><div><h2>Import CSV/XLSX</h2><p>Preview your spreadsheet before writing anything to Supabase.</p></div><button className="icon-button" onClick={closeImport} disabled={importing}><X size={20} /></button></div>
@@ -512,7 +514,8 @@ function ReportsSection() {
             </>}
             <div className="modal-actions"><button className="secondary" onClick={closeImport} disabled={importing}>Cancel</button><button className="primary" onClick={importRows} disabled={importing || loadingFile || !rows.length || Boolean(validation?.errors?.length)}>{importing ? "Importing..." : `Import ${rows.length || 0} ${importLabel?.label || "Records"}`}</button></div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
@@ -722,7 +725,11 @@ export default function Settings() {
             </div>
           ) : tenants.length === 0 ? (
             <div className="tenant-access-empty">
-              No tenants have been added yet.
+              <EmptyState
+                icon={KeyRound}
+                title="No tenant access keys yet"
+                message="Add a tenant to create a private portal key."
+              />
             </div>
           ) : (
             sortedTenants.map((tenant) => {

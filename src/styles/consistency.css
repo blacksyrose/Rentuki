@@ -81,14 +81,77 @@ a:active {
   animation: rk-surface-enter var(--rk-motion-slow) var(--rk-ease) both;
 }
 
+.modal-backdrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 20px;
+  background: rgba(15, 35, 25, 0.22);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+}
+
+.modal-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 150px;
+  padding: 28px 20px;
+  color: var(--rk-muted);
+  text-align: center;
+}
+
+.empty-state-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 2px;
+  border-radius: 12px;
+  background: var(--rk-green-soft);
+  color: var(--rk-green);
+}
+
+.empty-state strong {
+  color: var(--rk-text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.empty-state span {
+  color: var(--rk-muted-2);
+  font-size: 10px;
+}
+
+td > .empty-state {
+  min-height: 120px;
+}
+
+.report-import-modal {
+  overflow-y: auto;
+}
+
 @keyframes rk-page-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

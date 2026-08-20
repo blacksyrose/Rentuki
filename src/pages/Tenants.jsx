@@ -6,8 +6,10 @@ import {
   ArrowRightLeft,
   Pencil,
   LogOut,
+  Users,
 } from "lucide-react";
 import Modal from "../components/Modal";
+import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
@@ -716,8 +718,12 @@ export default function Tenants() {
             </table>
 
             {!tenants.length && (
-              <div className="empty tenant-directory-empty">
-                No tenants match your filters.
+              <div className="tenant-directory-empty">
+                <EmptyState
+                  icon={Users}
+                  title="No tenants found"
+                  message="Try changing your filters or add your first tenant."
+                />
               </div>
             )}
           </div>
@@ -838,7 +844,7 @@ export default function Tenants() {
             </button>
 
             <button className="primary" type="submit">
-              Save tenant
+              Save
             </button>
           </div>
         </form>

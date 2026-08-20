@@ -8,6 +8,7 @@ import {
   Zap,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
+import EmptyState from "../components/EmptyState";
 
 const INITIAL_FORM = {
   totalBill: "",
@@ -476,11 +477,11 @@ export default function SubmeterCalculator() {
 
           {!ready ? (
             <div className="submeter-empty">
-              <Calculator size={30} />
-              <strong>Ready when you are</strong>
-              <span>
-                Enter the bill and meter readings to see the allocation.
-              </span>
+              <EmptyState
+                icon={Calculator}
+                title="Ready when you are"
+                message="Enter the bill and meter readings to see the allocation."
+              />
             </div>
           ) : (
             <>

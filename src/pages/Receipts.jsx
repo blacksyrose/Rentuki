@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import jsPDF from "jspdf";
 import unicodeFontUrl from "dejavu-fonts-ttf/ttf/DejaVuSans.ttf?url";
 import { db } from "../services/db";
@@ -249,7 +250,7 @@ export default function Receipts() {
       {/* GENERATE RECEIPT MODAL                                           */}
       {/* ---------------------------------------------------------------- */}
 
-      {modalOpen && (
+      {modalOpen && createPortal(
         <div
           className="modal-backdrop receipts-modal-backdrop"
           onMouseDown={(event) => {
@@ -383,13 +384,14 @@ export default function Receipts() {
                     onClick={handleGenerate}
                   >
                     <PdfIcon />
-                    Generate PDF receipt
+                    Generate
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

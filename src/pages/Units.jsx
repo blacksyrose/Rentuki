@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Building2, Droplets, Pencil, Plus, Zap } from "lucide-react";
 import Modal from "../components/Modal";
+import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
@@ -192,7 +193,8 @@ export default function Units() {
         <div>
           <h1>Unit Overview</h1>
           <p>
-            Overview of unit availability, utilities information, and individual rent rates.
+            Overview of unit availability, utilities information, and individual
+            rent rates.
           </p>
         </div>
 
@@ -301,12 +303,12 @@ export default function Units() {
         })}
 
         {!loading && !data?.length && (
-          <div className="empty panel unit-empty-state">
-            <div className="unit-empty-icon">
-              <Building2 size={21} />
-            </div>
-            <strong>No units yet</strong>
-            <span>Add your first unit to get started.</span>
+          <div className="panel unit-empty-state">
+            <EmptyState
+              icon={Building2}
+              title="No units yet"
+              message="Add your first unit to get started."
+            />
           </div>
         )}
       </section>
@@ -489,7 +491,7 @@ export default function Units() {
           </label>
 
           <label>
-            Meralco CAN
+            Customer Account Number (CAN)
             <input
               value={form.electricity_can}
               onChange={(e) =>
@@ -498,7 +500,6 @@ export default function Units() {
                   electricity_can: e.target.value,
                 })
               }
-              placeholder="Customer Account Number"
             />
           </label>
 
@@ -512,7 +513,6 @@ export default function Units() {
                   electricity_bill_name: e.target.value,
                 })
               }
-              placeholder="Enter Bill Name"
             />
           </label>
 
@@ -542,12 +542,12 @@ export default function Units() {
               marginTop: "8px",
               marginBottom: "-4px",
             }}
-          >Real-time visual status of unit availability, floor plans, and individual rent rates.
+          >
             Maynilad
           </div>
 
           <label>
-            Maynilad CAN
+            Customer Account Number (CAN)
             <input
               value={form.water_can}
               onChange={(e) =>
@@ -556,12 +556,11 @@ export default function Units() {
                   water_can: e.target.value,
                 })
               }
-              placeholder="Customer Account Number"
             />
           </label>
 
           <label>
-            Maynilad Bill Name
+            Bill Name
             <input
               value={form.water_bill_name}
               onChange={(e) =>
@@ -570,7 +569,6 @@ export default function Units() {
                   water_bill_name: e.target.value,
                 })
               }
-              placeholder="Name appearing on the Maynilad bill"
             />
           </label>
 
@@ -584,7 +582,7 @@ export default function Units() {
             </button>
 
             <button className="primary" type="submit">
-              {editingUnit ? "Save changes" : "Save unit"}
+              {editingUnit ? "Save changes" : "Save"}
             </button>
           </div>
         </form>

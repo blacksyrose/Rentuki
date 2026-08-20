@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import Modal from "../components/Modal";
+import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
 import {
   db,
@@ -278,10 +279,10 @@ export default function Payments() {
   const modalTitle = editingPayment
     ? "Edit payment"
     : form.payment_type === "deposit"
-      ? "Record security deposit"
+      ? "Record Payment"
       : form.payment_type === "advance"
-        ? "Record advance rent"
-        : "Record payment";
+        ? "Record Payment"
+        : "Record Payment";
 
   return (
     <div>
@@ -312,15 +313,7 @@ export default function Payments() {
             onClick={() => openOtherPayment("advance")}
           >
             <Plus size={16} />
-            Advance rent
-          </button>
-
-          <button
-            className="secondary"
-            onClick={() => openOtherPayment("deposit")}
-          >
-            <Plus size={16} />
-            Security deposit
+            Other Payment
           </button>
         </div>
       </div>
@@ -417,8 +410,12 @@ export default function Payments() {
           </table>
 
           {!bill.loading && !bill.data?.length && (
-            <div className="empty">
-              No billing records for this month. Click “Generate billing”.
+            <div>
+              <EmptyState
+                icon={RefreshCw}
+                title="No billing records yet"
+                message="Generate billing to create this month’s records."
+              />
             </div>
           )}
         </div>
@@ -463,8 +460,8 @@ export default function Payments() {
           ) : (
             <div className="form-note full-span">
               {form.payment_type === "deposit"
-                ? "Security deposits are recorded separately from monthly rent billing."
-                : "Advance rent is recorded separately from monthly rent billing."}
+                ? "Recorded separately from monthly rent billing."
+                : "Recorded separately from monthly rent billing."}
             </div>
           )}
 

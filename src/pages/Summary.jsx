@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Download } from "lucide-react";
+import { Download, FileText, Receipt, Wallet } from "lucide-react";
+import EmptyState from "../components/EmptyState";
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
 import { currentMonth, money, csvDownload } from "../lib/utils";
@@ -233,9 +234,11 @@ export default function Summary() {
                 {!bills.length && (
                   <tr>
                     <td colSpan="8">
-                      <div className="empty">
-                        No billing records for this month.
-                      </div>
+                      <EmptyState
+                        icon={FileText}
+                        title="No billing records yet"
+                        message="Monthly billing records will appear here."
+                      />
                     </td>
                   </tr>
                 )}
@@ -333,10 +336,11 @@ export default function Summary() {
               {!otherPaymentRows.length && (
                 <tr>
                   <td colSpan="9">
-                    <div className="empty">
-                      No deposits, advance rent, or other tenant payments for
-                      this month.
-                    </div>
+                    <EmptyState
+                      icon={Wallet}
+                      title="No other payments yet"
+                      message="Deposits and advance rent will appear here."
+                    />
                   </td>
                 </tr>
               )}
@@ -368,7 +372,11 @@ export default function Summary() {
             </div>
           ))}
           {!expenses.length && (
-            <div className="empty">No expenses recorded this month.</div>
+            <EmptyState
+              icon={Receipt}
+              title="No expenses recorded yet"
+              message="Monthly expenses will appear here."
+            />
           )}
         </div>
       </section>

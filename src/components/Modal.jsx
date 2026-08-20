@@ -1,4 +1,6 @@
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
+
 export default function Modal({
   open,
   onClose,
@@ -7,7 +9,8 @@ export default function Modal({
   wide = false,
 }) {
   if (!open) return null;
-  return (
+
+  return createPortal(
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div
         className={`modal ${wide ? "wide" : ""}`}
@@ -21,6 +24,7 @@ export default function Modal({
         </div>
         <div className="modal-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

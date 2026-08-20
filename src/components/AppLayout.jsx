@@ -37,7 +37,7 @@ const nav = [
   ["/maintenance", "Maintenance & Expenses", Wrench],
   ["/summary", "Monthly Summary", CalendarRange],
   ["/receipts", "Receipts", Receipt],
-  ["/calculator", "Calculator", Calculator],
+  ["/submeter-calculator", "Calculator", Calculator],
 ];
 
 const pageTitles = {
@@ -166,8 +166,10 @@ export default function AppLayout() {
   }, []);
 
   const currentPage =
-    nav.find(([to]) =>
-      to === "/" ? location.pathname === "/" : location.pathname.startsWith(to),
+    Object.entries(pageTitles).find(([path]) =>
+      path === "/"
+        ? location.pathname === "/"
+        : location.pathname === path || location.pathname.startsWith(`${path}/`),
     )?.[1] || "Dashboard";
 
   const logout = async () => {
