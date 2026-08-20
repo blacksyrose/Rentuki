@@ -82,6 +82,7 @@ export default function Tenants() {
   });
 
   const [editTenancyForm, setEditTenancyForm] = useState({
+    start_date: "",
     monthly_rent: "",
     payment_due_day: "5",
     deposit_amount: "0",
@@ -327,6 +328,7 @@ export default function Tenants() {
     setEditingTenancy(tenancy);
 
     setEditTenancyForm({
+      start_date: tenancy.start_date || "",
       monthly_rent: tenancy.monthly_rent ?? "",
       payment_due_day: String(tenancy.payment_due_day ?? "5"),
       deposit_amount: tenancy.deposit_amount ?? "0",
@@ -340,6 +342,10 @@ export default function Tenants() {
     if (!editingTenancy) return;
 
     try {
+      if (!editTenancyForm.start_date) {
+        throw new Error("Move-in date is required.");
+      }
+
       const monthlyRent = Number(editTenancyForm.monthly_rent);
 
       const dueDay = Number(editTenancyForm.payment_due_day);
@@ -359,6 +365,7 @@ export default function Tenants() {
       }
 
       await db.tenancies.update(editingTenancy.id, {
+        start_date: editTenancyForm.start_date,
         monthly_rent: monthlyRent,
         payment_due_day: dueDay,
         deposit_amount: depositAmount,
@@ -1326,6 +1333,21 @@ export default function Tenants() {
               </p>
             </div>
           </div>
+
+          <label>
+            Move-in date
+            <input
+              required
+              type="date"
+              value={editTenancyForm.start_date}
+              onChange={(e) =>
+                setEditTenancyForm({
+                  ...editTenancyForm,
+                  start_date: e.target.value,
+                })
+              }
+            />
+          </label>
 
           <label>
             Monthly rent
