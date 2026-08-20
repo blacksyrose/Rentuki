@@ -831,7 +831,7 @@ export default function Tenants() {
             </select>
           </label>
 
-          <label className="full-span">
+            <label className="full-span">
             Notes
             <textarea
               value={form.notes}
@@ -1668,7 +1668,6 @@ export default function Tenants() {
               min="0"
               step="0.01"
               value={tenancyForm.monthly_rent}
-              placeholder="12000"
               onChange={(e) =>
                 setTenancyForm({
                   ...tenancyForm,
