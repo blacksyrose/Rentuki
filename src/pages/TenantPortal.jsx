@@ -23,37 +23,90 @@ const previewSummary = {
   property_address:
     "13 B Saging St. Talanay, Batasan Hills, Quezon City, Metro Manila, Philippines, 1126",
   tenant: {
-    first_name: "Erika",
-    last_name: "Ferolino",
+    first_name: "Khate",
+    last_name: "Sucatron",
   },
   current_tenancy: {
-    unit_number: "204",
-    monthly_rent: 15000,
-    payment_due_day: 5,
-    start_date: "2026-01-05",
+    unit_number: "7",
+    monthly_rent: 4000,
+    payment_due_day: 15,
+    start_date: "2026-08-10",
   },
   billing: {
-    amount_due: 15000,
-    status: "due",
-    payments_total: 0,
+    id: "preview-billing-2026-08",
+    tenancy_id: "preview-tenancy-1",
+    billing_month: "2026-08-01",
+    due_date: "2026-08-15",
+    amount_due: 4000,
+    paid_amount: 4000,
+    balance: 0,
+    status: "paid",
   },
-  payments: [
+  billing_history: [
     {
-      id: "preview-payment-1",
-      payment_date: "2026-07-05",
-      amount: 15000,
-      payment_method: "GCash",
-      payment_type: "rent",
+      id: "preview-billing-2026-08",
+      tenancy_id: "preview-tenancy-1",
+      billing_month: "2026-08-01",
+      due_date: "2026-08-15",
+      amount_due: 4000,
+      paid_amount: 4000,
+      balance: 0,
+      status: "paid",
+      unit_number: "7",
+      monthly_rent: 4000,
+      payment_methods: ["Cash"],
+      latest_payment_date: "2026-08-20",
+    },
+    {
+      id: "preview-billing-2026-07",
+      tenancy_id: "preview-tenancy-1",
       billing_month: "2026-07-01",
-      unit_number: "204",
+      due_date: "2026-07-15",
+      amount_due: 4000,
+      paid_amount: 4000,
+      balance: 0,
+      status: "paid",
+      unit_number: "5",
+      monthly_rent: 4000,
+      payment_methods: ["Cash"],
+      latest_payment_date: "2026-07-17",
+    },
+    {
+      id: "preview-billing-2026-06",
+      tenancy_id: "preview-tenancy-1",
+      billing_month: "2026-06-01",
+      due_date: "2026-06-15",
+      amount_due: 4300,
+      paid_amount: 4000,
+      balance: 300,
+      status: "partially_paid",
+      unit_number: "5",
+      monthly_rent: 4300,
+      payment_methods: ["Cash"],
+      latest_payment_date: "2026-06-17",
+    },
+    {
+      id: "preview-billing-2026-05",
+      tenancy_id: "preview-tenancy-1",
+      billing_month: "2026-05-01",
+      due_date: "2026-05-15",
+      amount_due: 4300,
+      paid_amount: 0,
+      balance: 4300,
+      status: "overdue",
+      unit_number: "5",
+      monthly_rent: 4300,
+      payment_methods: [],
+      latest_payment_date: null,
     },
   ],
+  payments: [],
   unit_history: [
     {
       id: "preview-tenancy-1",
-      unit_number: "204",
-      start_date: "2026-01-05",
-      monthly_rent: 15000,
+      unit_number: "7",
+      start_date: "2026-08-10",
+      monthly_rent: 4000,
       status: "active",
     },
   ],
@@ -155,18 +208,13 @@ function getDueDateForCurrentMonth(day) {
 }
 
 function getCurrentPaymentStatus({ balance, amountDue, billing, tenancy }) {
-  if (amountDue <= 0 || balance <= 0) {
-    return amountDue > 0 ? "Paid" : "Due";
-  }
+  if (amountDue <= 0 || balance <= 0) return amountDue > 0 ? "Paid" : "Due";
 
   const dueDate = getDueDateForCurrentMonth(tenancy?.payment_due_day);
-
   if (dueDate) {
     const today = new Date();
-
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
-
     if (today > dueDate) return "Overdue";
   }
 
@@ -174,11 +222,39 @@ function getCurrentPaymentStatus({ balance, amountDue, billing, tenancy }) {
     const normalized = String(billing.status)
       .replaceAll("_", " ")
       .toLowerCase();
-
     if (normalized === "overdue") return "Overdue";
   }
 
   return "Due";
+}
+
+function getBillingRecordStatus(record, paidOverride = null) {
+  const amountDue = Number(record?.amount_due || 0);
+  const paid =
+    paidOverride !== null
+      ? Number(paidOverride || 0)
+      : Number(record?.payments_total || 0);
+  const balance = Math.max(amountDue - paid, 0);
+
+  if (record?.status === "waived") return "Waived";
+  if (amountDue > 0 && balance <= 0) return "Paid";
+  if (paid > 0) return "Partially Paid";
+
+  const dueDate = String(record?.due_date || "");
+  const today = new Date().toISOString().slice(0, 10);
+  const billingMonth = String(record?.billing_month || "").slice(0, 7);
+
+  if (billingMonth > currentMonth()) return "Upcoming";
+  if (dueDate && dueDate < today) return "Overdue";
+  if (dueDate === today) return "Due";
+  return "Upcoming";
+}
+
+function billingStatusClass(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll(" ", "-");
 }
 
 async function loadFontBase64(url) {
@@ -699,81 +775,12 @@ export default function TenantPortal() {
     setError("");
 
     try {
-      // Load the current month first. This also gives us the tenant's
-      // complete unit history, which lets us determine how far back
-      // to retrieve payment records.
-      const currentData = await db.tenantPortal.summary(
-        normalized,
-        currentMonth(),
-      );
+      // The tenant portal RPC now returns the tenant's complete billing history
+      // directly from billing_records, including paid amount, balance, status,
+      // unit, payment methods, and latest payment date.
+      const data = await db.tenantPortal.summary(normalized, currentMonth());
 
-      const unitHistory = Array.isArray(currentData?.unit_history)
-        ? currentData.unit_history
-        : [];
-
-      const earliestStart = unitHistory
-        .map((item) => String(item.start_date || "").slice(0, 7))
-        .filter(Boolean)
-        .sort()[0];
-
-      const startMonth = earliestStart || currentMonth();
-
-      const months = [];
-
-      const cursor = new Date(`${startMonth}-01T00:00:00`);
-
-      const end = new Date(`${currentMonth()}-01T00:00:00`);
-
-      while (cursor <= end) {
-        months.push(
-          `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(
-            2,
-            "0",
-          )}`,
-        );
-
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
-
-      // Retrieve each historical month through the same protected RPC.
-      // The access key is still validated server-side for every request.
-      const historicalData = await Promise.all(
-        months
-          .filter((selectedMonth) => selectedMonth !== currentMonth())
-          .map((selectedMonth) =>
-            db.tenantPortal.summary(normalized, selectedMonth),
-          ),
-      );
-
-      const allPayments = [
-        ...(currentData?.payments || []),
-        ...historicalData.flatMap((data) => data?.payments || []),
-      ];
-
-      const uniquePayments = Array.from(
-        new Map(
-          allPayments.map((payment, index) => [
-            payment.id || `${payment.payment_date}-${payment.amount}-${index}`,
-            payment,
-          ]),
-        ).values(),
-      ).sort((a, b) => {
-        const dateCompare = String(b.payment_date || "").localeCompare(
-          String(a.payment_date || ""),
-        );
-
-        if (dateCompare !== 0) return dateCompare;
-
-        return String(b.created_at || "").localeCompare(
-          String(a.created_at || ""),
-        );
-      });
-
-      setSummary({
-        ...currentData,
-        payments: uniquePayments,
-      });
-
+      setSummary(data);
       setAccessKey(normalized);
 
       try {
@@ -852,11 +859,9 @@ export default function TenantPortal() {
   const payments = useMemo(() => {
     const sources = [
       ...(Array.isArray(portalSummary?.payments) ? portalSummary.payments : []),
-
       ...(Array.isArray(portalSummary?.other_payments)
         ? portalSummary.other_payments
         : []),
-
       ...(Array.isArray(portalSummary?.standalone_payments)
         ? portalSummary.standalone_payments
         : []),
@@ -893,9 +898,7 @@ export default function TenantPortal() {
 
   const maintenance = maintenanceSource.filter((item) => {
     const itemTenantId = item.tenant_id || item.tenants?.id;
-
     const itemTenancyId = item.tenancy_id || item.tenancies?.id;
-
     const itemUnitNumber = item.unit_number || item.units?.unit_number;
 
     if (itemTenantId || itemTenancyId || itemUnitNumber) {
@@ -913,9 +916,7 @@ export default function TenantPortal() {
 
   const expenses = expensesSource.filter((item) => {
     const itemTenantId = item.tenant_id || item.tenants?.id;
-
     const itemTenancyId = item.tenancy_id || item.tenancies?.id;
-
     const itemUnitNumber = item.unit_number || item.units?.unit_number;
 
     if (itemTenantId || itemTenancyId || itemUnitNumber) {
@@ -940,40 +941,62 @@ export default function TenantPortal() {
     [payments],
   );
 
-  const amountDue = Number(billing?.amount_due || 0);
+  // Billing records are now the source of truth for rental balances/statuses.
+  const billingHistory = useMemo(
+    () =>
+      (Array.isArray(portalSummary?.billing_history)
+        ? portalSummary.billing_history
+        : []
+      )
+        .map((record) => ({
+          ...record,
+          paid_amount: Number(record?.paid_amount || 0),
+          amount_due: Number(record?.amount_due || 0),
+          balance: Number(record?.balance || 0),
+        }))
+        .sort((a, b) =>
+          String(b.billing_month || "").localeCompare(
+            String(a.billing_month || ""),
+          ),
+        ),
+    [portalSummary?.billing_history],
+  );
 
+  const billingMonth = String(billing?.billing_month || currentMonth()).slice(
+    0,
+    7,
+  );
+
+  const currentBilling =
+    billingHistory.find(
+      (record) =>
+        String(record?.billing_month || "").slice(0, 7) === billingMonth &&
+        (!tenancy?.id ||
+          String(record?.tenancy_id || "") === String(tenancy.id)),
+    ) ||
+    billingHistory.find(
+      (record) =>
+        String(record?.billing_month || "").slice(0, 7) === billingMonth,
+    ) ||
+    null;
+
+  const amountDue = Number(currentBilling?.amount_due || 0);
+  const currentMonthPaid = Number(currentBilling?.paid_amount || 0);
   const balance = Math.max(
-    amountDue -
-      Number(
-        portalSummary?.billing?.payments_total ??
-          portalSummary?.billing?.paid ??
-          0,
-      ),
+    Number(currentBilling?.balance ?? amountDue - currentMonthPaid),
     0,
   );
 
-  const paymentRows = useMemo(
-    () =>
-      payments.slice().sort((a, b) => {
-        const dateCompare = String(b.payment_date || "").localeCompare(
-          String(a.payment_date || ""),
-        );
-
-        if (dateCompare !== 0) return dateCompare;
-
-        return String(b.created_at || "").localeCompare(
-          String(a.created_at || ""),
-        );
-      }),
-    [payments],
+  const totalUnpaid = billingHistory.reduce(
+    (total, record) => total + Math.max(Number(record.balance || 0), 0),
+    0,
   );
 
-  const status = getCurrentPaymentStatus({
-    balance,
-    amountDue,
-    billing,
-    tenancy,
-  });
+  const status = currentBilling
+    ? getBillingRecordStatus(currentBilling, currentBilling.paid_amount)
+    : "Upcoming";
+
+  const paymentRows = billingHistory;
 
   if (!isPreview && (!accessKey || !summary)) {
     return (
@@ -1100,7 +1123,7 @@ export default function TenantPortal() {
           </div>
 
           <div>
-            <span>Current unit</span>
+            <span>Current Unit</span>
 
             <Building2 size={17} />
 
@@ -1118,7 +1141,7 @@ export default function TenantPortal() {
           </div>
 
           <div>
-            <span>Monthly rent</span>
+            <span>Monthly Rent</span>
 
             <CircleDollarSign size={17} />
 
@@ -1132,7 +1155,7 @@ export default function TenantPortal() {
           </div>
 
           <div>
-            <span>Current balance</span>
+            <span>Current Balance ({monthLabel(billingMonth)})</span>
 
             <CircleDollarSign size={17} />
 
@@ -1150,7 +1173,7 @@ export default function TenantPortal() {
 
         <section className="portal-overview-stats">
           <div className="portal-overview-stat">
-            <span>Total payments</span>
+            <span>Total Payments</span>
 
             <strong>{payments.length}</strong>
 
@@ -1158,7 +1181,7 @@ export default function TenantPortal() {
           </div>
 
           <div className="portal-overview-stat">
-            <span>Total paid</span>
+            <span>Total Paid</span>
 
             <strong>{money(paid)}</strong>
 
@@ -1166,16 +1189,14 @@ export default function TenantPortal() {
           </div>
 
           <div className="portal-overview-stat">
-            <span>Current amount due</span>
-
-            <strong>{money(balance)}</strong>
-
-            <small>{status}</small>
+            <span>Total Balance</span>
+            <strong>{money(totalUnpaid)}</strong>
+            <small>Total unpaid across rental history</small>
           </div>
         </section>
 
         <div className="portal-summary-disclaimer">
-          <strong>Summary notice:</strong> Records in this portal may be
+          <strong>Notice:</strong> Records in this portal may be
           incomplete or inaccurate due to unrecorded transactions. Please
           contact your landlord if you notice any discrepancies.
         </div>
@@ -1191,110 +1212,161 @@ export default function TenantPortal() {
             </div>
 
             <div>
-              <h2>Payment history</h2>
-
+              <h2>Payment History</h2>
               <p>
-                All recorded transactions, payment types, methods, and receipts.
+                Monthly rent billing, payments, balances, statuses, and
+                receipts.
               </p>
             </div>
           </div>
 
           <div className="portal-table-wrap">
-            <table className="portal-table">
+            <table className="portal-table portal-billing-history-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-
+                  <th>Payment date</th>
                   <th>Rent period</th>
-
                   <th>Unit</th>
-
+                  <th>Amount due</th>
                   <th>Paid</th>
-
+                  <th>Balance</th>
+                  <th>Status</th>
                   <th>Method</th>
-
-                  <th>Type</th>
-
                   <th>Receipt</th>
                 </tr>
               </thead>
 
               <tbody>
-                {paymentRows.map((payment) => (
-                  <tr key={payment.id}>
-                    <td>{dateLabel(payment.payment_date)}</td>
+                {paymentRows.map((record) => {
+                  const rowStatus = getBillingRecordStatus(
+                    record,
+                    record.paid_amount,
+                  );
 
-                    <td>
-                      {payment.billing_month
-                        ? monthLabel(String(payment.billing_month).slice(0, 7))
-                        : "—"}
-                    </td>
+                  const latestPayment = payments
+                    .filter(
+                      (payment) =>
+                        record?.id &&
+                        payment?.billing_record_id &&
+                        String(payment.billing_record_id) === String(record.id),
+                    )
+                    .sort((a, b) =>
+                      String(b.payment_date || "").localeCompare(
+                        String(a.payment_date || ""),
+                      ),
+                    )[0];
 
-                    <td>
-                      {payment.unit_number
-                        ? `Unit ${payment.unit_number}`
-                        : "—"}
-                    </td>
+                  const methods = Array.isArray(record.payment_methods)
+                    ? record.payment_methods.filter(Boolean)
+                    : [];
 
-                    <td>
-                      <strong>{money(payment.amount)}</strong>
-                    </td>
+                  return (
+                    <tr key={record.id}>
+                      <td>
+                        {record.latest_payment_date
+                          ? dateLabel(record.latest_payment_date)
+                          : "—"}
+                      </td>
 
-                    <td>
-                      <span
-                        className={`portal-payment-pill method ${paymentMethodClass(
-                          payment.payment_method,
-                        )}`}
-                      >
-                        {formatPaymentMethod(payment.payment_method)}
-                      </span>
-                    </td>
+                      <td>
+                        {record.billing_month
+                          ? monthLabel(String(record.billing_month).slice(0, 7))
+                          : "—"}
+                      </td>
 
-                    <td>
-                      <span
-                        className={`portal-payment-pill type ${paymentTypeClass(
-                          payment.payment_type || payment.type,
-                        )}`}
-                      >
-                        {formatPaymentType(
-                          payment.payment_type || payment.type,
+                      <td>
+                        {record.unit_number
+                          ? `Unit ${record.unit_number}`
+                          : "—"}
+                      </td>
+
+                      <td>
+                        <strong>{money(record.amount_due)}</strong>
+                      </td>
+
+                      <td>
+                        <strong>{money(record.paid_amount)}</strong>
+                      </td>
+
+                      <td>
+                        <strong
+                          className={
+                            record.balance > 0
+                              ? "portal-billing-balance-due"
+                              : "portal-billing-balance-paid"
+                          }
+                        >
+                          {money(record.balance)}
+                        </strong>
+                      </td>
+
+                      <td>
+                        <span
+                          className={`portal-payment-pill status ${billingStatusClass(
+                            rowStatus,
+                          )}`}
+                        >
+                          {rowStatus}
+                        </span>
+                      </td>
+
+                      <td>
+                        {methods.length ? (
+                          <div className="portal-billing-methods">
+                            {methods.map((method) => (
+                              <span
+                                key={method}
+                                className={`portal-payment-pill method ${paymentMethodClass(
+                                  method,
+                                )}`}
+                              >
+                                {formatPaymentMethod(method)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          "—"
                         )}
-                      </span>
-                    </td>
+                      </td>
 
-                    <td>
-                      <button
-                        type="button"
-                        className="portal-download-receipt"
-                        title="Download receipt"
-                        aria-label={`Download receipt for ${
-                          payment.payment_type || payment.type || "payment"
-                        }`}
-                        onClick={() =>
-                          downloadTenantReceipt(
-                            payment,
-                            tenant,
-                            propertyHeader,
-                            payments,
-                          )
-                        }
-                      >
-                        <Download size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      <td>
+                        {latestPayment ? (
+                          <button
+                            type="button"
+                            className="portal-download-receipt"
+                            title="Download receipt"
+                            aria-label={`Download receipt for ${monthLabel(
+                              String(record.billing_month).slice(0, 7),
+                            )}`}
+                            onClick={() =>
+                              downloadTenantReceipt(
+                                latestPayment,
+                                tenant,
+                                propertyHeader,
+                                payments,
+                              )
+                            }
+                          >
+                            <Download size={14} />
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          {!payments.length && (
+          {!paymentRows.length && (
             <div className="portal-empty">
               <Clock3 size={20} />
-
-              <strong>No payments recorded</strong>
-
-              <span>Your complete payment history will appear here.</span>
+              <strong>No billing records found</strong>
+              <span>
+                Monthly rental billing records will appear here once created.
+              </span>
             </div>
           )}
         </section>
@@ -1401,7 +1473,7 @@ export default function TenantPortal() {
             </div>
 
             <div>
-              <h2>Unit history</h2>
+              <h2>Unit History</h2>
 
               <p>
                 Previous rental assignments remain available for your records.

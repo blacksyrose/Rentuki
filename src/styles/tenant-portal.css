@@ -960,7 +960,6 @@
   font-weight: 600;
 }
 
-
 @media (max-width: 600px) {
   .portal-support-note {
     align-items: flex-start;
@@ -1929,4 +1928,86 @@
   .portal-activity-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Billing status pills in tenant payment history */
+.portal-payment-pill.status.paid {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.portal-payment-pill.status.partial,
+.portal-payment-pill.status.partially-paid {
+  background: #fff4dc;
+  color: #a86400;
+}
+
+.portal-payment-pill.status.overdue {
+  background: #fff0ee;
+  color: #c53d35;
+}
+
+.portal-payment-pill.status.due {
+  background: #fff7df;
+  color: #916900;
+}
+
+.portal-payment-pill.status.upcoming {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.portal-payment-pill.status.waived {
+  background: #f1effb;
+  color: #6d58a1;
+}
+
+.portal-payments-simple .portal-table th:nth-last-child(2),
+.portal-payments-simple .portal-table td:nth-last-child(2) {
+  min-width: 105px;
+}
+
+/* Billing-record based payment history */
+.portal-billing-history-table {
+  min-width: 980px;
+}
+
+.portal-billing-history-table th,
+.portal-billing-history-table td {
+  vertical-align: middle;
+}
+
+.portal-billing-balance-due {
+  color: #b33d3d;
+}
+
+.portal-billing-balance-paid {
+  color: var(--rk-green-dark);
+}
+
+.portal-billing-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 150px;
+}
+
+.portal-billing-history-table .portal-payment-pill.status {
+  min-width: 76px;
+}
+
+.portal-billing-history-table th:nth-child(4),
+.portal-billing-history-table td:nth-child(4),
+.portal-billing-history-table th:nth-child(5),
+.portal-billing-history-table td:nth-child(5),
+.portal-billing-history-table th:nth-child(6),
+.portal-billing-history-table td:nth-child(6) {
+  text-align: right;
+}
+
+.portal-billing-history-table th:nth-child(7),
+.portal-billing-history-table td:nth-child(7),
+.portal-billing-history-table th:nth-child(9),
+.portal-billing-history-table td:nth-child(9) {
+  text-align: center;
 }
