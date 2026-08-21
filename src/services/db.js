@@ -425,7 +425,7 @@ export const db = {
         supabase
           .from("payments")
           .select(
-            "*, billing_records(billing_month,amount_due,tenancy_id), tenants(first_name,last_name), tenancies(units(unit_number),start_date,end_date)",
+            "*, billing_records(billing_month,amount_due,tenancy_id), tenants(id,first_name,last_name), tenancies(tenant_id,units(unit_number),start_date,end_date)",
           )
           .order("payment_date", {
             ascending: false,

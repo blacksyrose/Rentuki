@@ -66,6 +66,7 @@ export default function Payments() {
     return db.billing.list(month);
   }, [month]);
 
+  const payments = useAsync(() => db.payments.list(), [month]);
   const tenants = useAsync(() => db.tenants.list(), []);
 
   const [open, setOpen] = useState(false);
@@ -164,6 +165,21 @@ export default function Payments() {
       payment_type: payment.payment_type || "rent",
       tenant_id: billingRecord.tenancies?.tenant_id || "",
       tenancy_id: billingRecord.tenancy_id || "",
+      amount: Number(payment.amount || 0),
+      payment_date: payment.payment_date || "",
+      payment_method: payment.payment_method || "Cash",
+      notes: payment.notes || "",
+    });
+    setOpen(true);
+  };
+
+  const openEditOtherPayment = (payment) => {
+    setSelected(null);
+    setEditingPayment(payment);
+    setForm({
+      payment_type: payment.payment_type || "advance",
+      tenant_id: payment.tenant_id || payment.tenants?.id || "",
+      tenancy_id: payment.tenancy_id || payment.tenancies?.id || "",
       amount: Number(payment.amount || 0),
       payment_date: payment.payment_date || "",
       payment_method: payment.payment_method || "Cash",
@@ -273,6 +289,7 @@ export default function Payments() {
 
       closeModal();
       await bill.refresh();
+      await payments.refresh();
       await tenants.refresh();
     } catch (error) {
       toast.error(error.message || "Unable to save payment.");
@@ -313,7 +330,7 @@ export default function Payments() {
 
           <button
             className="secondary"
-            onClick={() => openOtherPayment("advance")}
+            onClick={() => openOtherPayment("deposit")}
           >
             <Plus size={16} />
             Other Payment
@@ -324,7 +341,7 @@ export default function Payments() {
       <section className="panel table-panel">
         <div className="panel-head">
           <div>
-            <h2>{monthLabel(month)}</h2>
+            <h2>Rent Payment ({monthLabel(month)})</h2>
             <p>Billing obligations for active tenancies</p>
           </div>
         </div>
@@ -431,9 +448,95 @@ export default function Payments() {
         </div>
       </section>
 
+      <section className="panel table-panel">
+        <div className="panel-head">
+          <div>
+            <h2>Other Payments</h2>
+            <p>Standalone tenant payments for {monthLabel(month)}.</p>
+          </div>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tenant</th>
+                <th>Unit</th>
+                <th>Payment Type</th>
+                <th>Amount</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>Date Paid</th>
+                <th>MOP</th>
+                <th>Remarks</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(payments.data || [])
+                .filter(
+                  (payment) =>
+                    payment.payment_type !== "rent" &&
+                    String(payment.payment_date || "").startsWith(month),
+                )
+                .map((payment) => {
+                  const tenant = payment.tenants;
+                  const paymentType = String(payment.payment_type || "other")
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+                  return (
+                    <tr key={payment.id}>
+                      <td>
+                        <strong>
+                          {tenant?.first_name || "—"} {tenant?.last_name || ""}
+                        </strong>
+                      </td>
+                      <td>{payment.tenancies?.units?.unit_number || "—"}</td>
+                      <td>{paymentType}</td>
+                      <td>{money(payment.amount)}</td>
+                      <td>{money(payment.amount)}</td>
+                      <td><strong>{money(0)}</strong></td>
+                      <td>{payment.payment_date || "—"}</td>
+                      <td>{payment.payment_method || "—"}</td>
+                      <td>{payment.notes || "—"}</td>
+                      <td>
+                        <button
+                          className="small-btn secondary"
+                          onClick={() => openEditOtherPayment(payment)}
+                          title="Edit payment"
+                          aria-label="Edit payment"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              {!payments.loading &&
+                !(payments.data || []).some(
+                  (payment) =>
+                    payment.payment_type !== "rent" &&
+                    String(payment.payment_date || "").startsWith(month),
+                ) && (
+                  <tr>
+                    <td colSpan="10">
+                      <EmptyState
+                        icon={Plus}
+                        title="No deposits or advance rent yet"
+                        message="Security deposits and advance rent will appear here."
+                      />
+                    </td>
+                  </tr>
+                )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <Modal open={open} onClose={closeModal} title={modalTitle}>
         <form onSubmit={save} className="form-grid">
-          {!editingPayment && (
+          {(!editingPayment || editingPayment.payment_type !== "rent") && (
             <label className="full-span">
               Payment type
               <select
@@ -444,8 +547,14 @@ export default function Payments() {
                   setForm({
                     ...form,
                     payment_type: paymentType,
-                    tenant_id: paymentType === "rent" ? form.tenant_id : "",
-                    tenancy_id: paymentType === "rent" ? form.tenancy_id : "",
+                    tenant_id:
+                      paymentType === "rent" || editingPayment
+                        ? form.tenant_id
+                        : "",
+                    tenancy_id:
+                      paymentType === "rent" || editingPayment
+                        ? form.tenancy_id
+                        : "",
                     amount:
                       paymentType === "rent" && selected
                         ? remainingBalance(selected)
