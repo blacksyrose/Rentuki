@@ -214,15 +214,32 @@ export const db = {
         supabase.from("tenants").update(payload).eq("id", id).select().single(),
       ),
 
-    moveOut: ({ tenantId, tenancyId, moveOutDate, notes }) =>
-      unwrap(
+    moveOut: async ({ tenantId, tenancyId, moveOutDate, notes }) => {
+      const result = await unwrap(
         supabase.rpc("move_out_tenant", {
           p_tenancy_id: tenancyId,
           p_tenant_id: tenantId,
           p_move_out_date: moveOutDate,
           p_notes: cleanText(notes),
         }),
-      ),
+      );
+
+      /*
+       * A tenant who has moved out must no longer be able to access
+       * the tenant portal. Keep the historical tenant/payment records,
+       * but immediately invalidate the private access key.
+       */
+      if (tenantId) {
+        await unwrap(
+          supabase
+            .from("tenants")
+            .update({ tenant_access_key: null })
+            .eq("id", tenantId),
+        );
+      }
+
+      return result;
+    },
   },
 
   /* ------------------------------------------------------------------------ */
@@ -362,51 +379,20 @@ export const db = {
           .order("due_date"),
       );
 
-      /*
-       * Example:
-       *
-       * Old tenancy:
-       *   Aug 20, 2026 -> Aug 31, 2026
-       *
-       * New tenancy:
-       *   Sep 1, 2026 -> NULL
-       *
-       * September should NOT display the old tenancy.
-       *
-       * But the old billing/payment records remain in Supabase
-       * for historical records.
-       */
-      return (records || []).filter((record) => {
-        const tenancy = record.tenancies;
+      return records || [];
+    },
 
-        if (!tenancy?.start_date) {
-          return true;
-        }
+    listAll: async () => {
+      const records = await unwrap(
+        supabase
+          .from("billing_records")
+          .select(
+            "*, tenancies(tenant_id,unit_id,start_date,end_date,monthly_rent,payment_due_day,tenants(first_name,last_name),units(unit_number,property_id)), payments(*)",
+          )
+          .order("due_date"),
+      );
 
-        // Do not display rent billing for the tenant's
-        // move-in month.
-        //
-        // Example:
-        // Move-in: August 1, 2026
-        // August billing: NO
-        // September billing: YES
-        const moveInMonth = String(tenancy.start_date).slice(0, 7);
-
-        if (moveInMonth === billingMonth) {
-          return false;
-        }
-
-        /*
-         * IMPORTANT:
-         *
-         * Once a billing record exists, keep it visible even
-         * when the tenancy has already ended.
-         *
-         * Historical billing, payments, and receipts must remain
-         * accessible after move-out.
-         */
-        return true;
-      });
+      return records || [];
     },
 
     create: (payload) =>
@@ -779,23 +765,45 @@ export async function generateBillingForActiveTenancies(
       return false;
     }
 
-    // Rent billing starts the month AFTER move-in.
-    // Example:
-    // Move-in: 2026-08-01
-    // August:  NO billing
-    // September: YES billing
     const moveInMonth = String(tenancy.start_date).slice(0, 7);
 
-    if (moveInMonth === billingMonth) {
-      return false;
-    }
-
-    // Do not generate regular billing for a tenant
-    // who moved out during the selected billing month.
     const moveOutMonth = tenancy.end_date
       ? String(tenancy.end_date).slice(0, 7)
       : null;
 
+    // A tenant who transferred to a new unit during this month
+    // should still receive billing for the new tenancy.
+    const wasTransferredThisMonth =
+      moveInMonth === billingMonth &&
+      (tenancies || []).some((previousTenancy) => {
+        if (previousTenancy.id === tenancy.id) {
+          return false;
+        }
+
+        if (previousTenancy.tenant_id !== tenancy.tenant_id) {
+          return false;
+        }
+
+        if (!previousTenancy.end_date) {
+          return false;
+        }
+
+        const previousEndMonth = String(previousTenancy.end_date).slice(0, 7);
+
+        return (
+          previousEndMonth === billingMonth &&
+          previousTenancy.end_date < tenancy.start_date
+        );
+      });
+
+    // Brand-new move-ins are still NOT billed during
+    // their first month.
+    if (moveInMonth === billingMonth && !wasTransferredThisMonth) {
+      return false;
+    }
+
+    // Old tenancies that ended during this month should NOT
+    // receive a new billing record.
     if (moveOutMonth === billingMonth) {
       return false;
     }
@@ -1297,11 +1305,6 @@ export async function importPayments(rows = []) {
     }
   }
 
-  /*
-   * Only rent payments affect billing status,
-   * but refreshing the affected months is still
-   * safe here.
-   */
   await syncBillingStatusesForMonths([
     ...new Set(
       rows

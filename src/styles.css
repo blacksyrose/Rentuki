@@ -2041,6 +2041,10 @@ body {
   color: #dc2626;
 }
 
+.notification-title.danger {
+  color: #dc2626 !important;
+}
+
 .notification-icon.warning {
   background: #fffbeb;
   color: #b45309;
@@ -2576,4 +2580,338 @@ tbody tr:hover {
   max-width: none !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Notification dropdown                                                     */
+/* -------------------------------------------------------------------------- */
+.notifications-dropdown {
+  width: 430px;
+  max-width: min(430px, calc(100vw - 28px));
+  overflow: hidden;
+}
+
+/* Header */
+.notification-heading {
+  padding: 16px 16px 12px;
+}
+
+.notification-heading-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notification-heading-main > div:first-child {
+  min-width: 0;
+}
+
+/* Remove the extra bell inside the notification dropdown. */
+.notification-heading-icon {
+  display: none !important;
+}
+
+.notification-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+/* Filter pills: thicker border, compact size, consistent typography. */
+.notification-summary-pill,
+.notification-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.notification-summary-pill {
+  min-height: 24px;
+  padding: 4px 10px;
+  font-size: 10px;
+  line-height: 1;
+  border: 2px solid transparent;
+}
+
+.notification-summary-pill.danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.notification-summary-pill.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.notification-summary-pill.info {
+  background: #eaf3ff;
+  border-color: #bfdbfe;
+  color: #326aa8;
+}
+
+/* Keep the status class available for compatibility, but do not show the
+   duplicate status badge on the right of each notification. */
+.notification-status {
+  display: none !important;
+}
+
+/* Notification list */
+.notifications-list {
+  max-height: min(540px, calc(100vh - 190px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.notification-item {
+  position: relative;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 16px 15px;
+  border: 0;
+  border-bottom: 1px solid var(--rk-border-soft);
+  background: transparent;
+  text-align: left;
+}
+
+.notification-item:last-child {
+  border-bottom: 0;
+}
+
+/* Icon sits at the top of the notification, aligned with the title. */
+.notification-item > .notification-icon {
+  align-self: flex-start !important;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: 0;
+  flex: 0 0 42px;
+  border-radius: 11px;
+}
+
+.notification-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.8;
+}
+
+.notification-icon.danger {
+  background: #fef1f2;
+  color: #ef1d25;
+}
+
+.notification-icon.warning {
+  background: #fff7e8;
+  color: #d97706;
+}
+
+.notification-icon.info {
+  background: #edf5ff;
+  color: #2873c7;
+}
+
+.notification-title.info {
+  color: #2873c7 !important;
+}
+
+.notification-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.notification-item-top {
+  display: block !important;
+  margin: 0;
+}
+
+.notification-item-top strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--rk-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status is represented by the icon and title, not a duplicate pill. */
+.notification-item-top strong:first-child {
+  color: var(--rk-text);
+}
+
+.notification-entity {
+  display: block;
+  margin-top: 3px;
+  color: var(--rk-text);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-copy > small {
+  display: block;
+  margin-top: 4px;
+  color: var(--rk-muted);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-item-bottom {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 0;
+  border-top: 0 !important;
+}
+
+.notification-item-bottom > span:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.notification-item-bottom > span:first-child small {
+  margin: 0;
+  color: var(--rk-muted);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.notification-item-bottom > span:first-child strong {
+  color: var(--rk-text);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.notification-footer,
+.notification-go-payments,
+.go-to-payments-notification {
+  display: none !important;
+}
+
+@media (max-width: 520px) {
+  .notifications-dropdown {
+    position: fixed;
+    top: 62px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+  }
+
+  .notification-item {
+    gap: 12px;
+    padding: 14px 14px 13px;
+  }
+
+  .notification-item > .notification-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+
+  .notification-entity {
+    font-size: 13px;
+  }
+}
+
+.notification-summary-pill.partial {
+  background: #fff7e6;
+  border-color: #f6c453;
+  color: #b77900;
+}
+
+.notification-icon.partial {
+  background: #fff4d6;
+  color: #d97706;
+}
+
+.notification-title.partial {
+  color: #d97706 !important;
+}
+
+.notification-summary-pill.due {
+  background: #fff1e8;
+  border-color: #fdba74;
+  color: #c2410c;
+}
+
+.notification-icon.due {
+  background: #fff1e8;
+  color: #ea580c;
+}
+
+.notification-title.due {
+  color: #ea580c !important;
+}
+
+.payment-status-badge {
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.1;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.payment-status-badge.overdue {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.payment-status-badge.due {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.payment-status-badge.upcoming {
+  background: #eaf3ff;
+  color: #326aa8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.payment-status-badge.not-due {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.payment-status-badge.partial {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.payment-status-badge.paid {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.payment-status-badge.waived {
+  background: #f3f4f6;
+  color: #6b7280;
 }

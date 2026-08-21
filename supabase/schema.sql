@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict hIKFynhANw4W6fHIwGUNtufbwFzqsGO4fXoZOcdnm9mfR7b9VTQHLB7zNNkNeE8
+\restrict gNHxMxTakiXb4Cf7UEjfiF55PsmI7XFkPQyrhTUsdKV8Og3I8eXaQlfjkeFrXzd
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.6
@@ -1550,9 +1550,19 @@ begin
   limit 1;
 
   /*
-   * Payment history for the selected billing month.
-   * Historical tenancy/unit information is taken from the payment's
-   * tenancy relationship, so transfers do not rewrite old records.
+   * Complete payment history for this tenant.
+   *
+   * Rent payments are linked to billing_records through
+   * billing_record_id and retain their billing month.
+   *
+   * Deposit and advance payments are standalone transactions and
+   * intentionally have billing_record_id = NULL. They must therefore
+   * NOT be filtered through br.billing_month.
+   *
+   * The requested p_billing_month is still used above for the current
+   * billing/balance card. The payment history itself is intentionally
+   * complete so tenants can see their recorded rental history across
+   * all months.
    */
   select coalesce(
     jsonb_agg(
@@ -1561,12 +1571,15 @@ begin
         'amount', pay.amount,
         'payment_date', pay.payment_date,
         'payment_method', pay.payment_method,
+        'payment_type', coalesce(pay.payment_type, 'rent'),
         'reference_number', pay.reference_number,
-        'receipt_number', pay.reference_number,
+        'receipt_number', coalesce(pay.receipt_number, pay.reference_number),
         'notes', pay.notes,
         'billing_month', br.billing_month,
         'tenancy_id', pay.tenancy_id,
-        'unit_number', u.unit_number
+        'tenant_id', pay.tenant_id,
+        'unit_number', u.unit_number,
+        'created_at', pay.created_at
       )
       order by pay.payment_date desc, pay.created_at desc
     ),
@@ -1577,8 +1590,7 @@ begin
   left join public.billing_records br on br.id = pay.billing_record_id
   left join public.tenancies te on te.id = pay.tenancy_id
   left join public.units u on u.id = te.unit_id
-  where pay.tenant_id = v_tenant.id
-    and br.billing_month = p_billing_month;
+  where pay.tenant_id = v_tenant.id;
 
   /*
    * Full rental history, including historical assignments.
@@ -4417,7 +4429,7 @@ CREATE TABLE public.tenants (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     owner_id uuid DEFAULT auth.uid() NOT NULL,
     first_name text NOT NULL,
-    last_name text NOT NULL,
+    last_name text,
     phone text,
     email text,
     address text,
@@ -4528,7 +4540,11 @@ CREATE TABLE storage.buckets (
     file_size_limit bigint,
     allowed_mime_types text[],
     owner_id text,
-    type storage.buckettype DEFAULT 'STANDARD'::storage.buckettype NOT NULL
+    type storage.buckettype DEFAULT 'STANDARD'::storage.buckettype NOT NULL,
+    versioning_status text DEFAULT 'DISABLED'::text NOT NULL,
+    CONSTRAINT buckets_versioning_dark_check CHECK ((versioning_status = 'DISABLED'::text)),
+    CONSTRAINT buckets_versioning_standard_only_check CHECK (((type = 'STANDARD'::storage.buckettype) OR (versioning_status = 'DISABLED'::text))),
+    CONSTRAINT buckets_versioning_status_check CHECK ((versioning_status = ANY (ARRAY['DISABLED'::text, 'ENABLED'::text, 'SUSPENDED'::text])))
 );
 
 
@@ -4594,7 +4610,10 @@ CREATE TABLE storage.objects (
     path_tokens text[] GENERATED ALWAYS AS (string_to_array(name, '/'::text)) STORED,
     version text,
     owner_id text,
-    user_metadata jsonb
+    user_metadata jsonb,
+    archived_at timestamp with time zone,
+    is_delete_marker boolean DEFAULT false NOT NULL,
+    is_versioned boolean DEFAULT false NOT NULL
 );
 
 
@@ -6725,5 +6744,5 @@ CREATE EVENT TRIGGER pgrst_drop_watch ON sql_drop
 -- PostgreSQL database dump complete
 --
 
-\unrestrict hIKFynhANw4W6fHIwGUNtufbwFzqsGO4fXoZOcdnm9mfR7b9VTQHLB7zNNkNeE8
+\unrestrict gNHxMxTakiXb4Cf7UEjfiF55PsmI7XFkPQyrhTUsdKV8Og3I8eXaQlfjkeFrXzd
 

@@ -137,7 +137,9 @@ function parseTenantRows(rows) {
     }
 
     const { first_name, last_name } = splitName(name);
-    const status = String(row.status || "active").trim().toLowerCase();
+    const status = String(row.status || "active")
+      .trim()
+      .toLowerCase();
     const allowedStatuses = ["active", "moving", "moved_out", "historical"];
 
     normalized.push({
@@ -171,7 +173,9 @@ function parseUnitRows(rows) {
     }
 
     if (!Number.isFinite(rent) || rent < 0) {
-      errors.push(`Row ${rowNumber}: rent must be a valid non-negative number.`);
+      errors.push(
+        `Row ${rowNumber}: rent must be a valid non-negative number.`,
+      );
       return;
     }
 
@@ -183,7 +187,9 @@ function parseUnitRows(rows) {
       maintenance: "maintenance",
       unavailable: "unavailable",
     };
-    const rawStatus = String(row.status || "available").trim().toLowerCase();
+    const rawStatus = String(row.status || "available")
+      .trim()
+      .toLowerCase();
 
     normalized.push({
       sourceRow: rowNumber,
@@ -209,7 +215,8 @@ function parsePaymentRows(rows) {
     const amount = parseNumber(row.amount);
     const tenant = String(row.tenant || row.tenant_name || "").trim();
 
-    if (!date) errors.push(`Row ${rowNumber}: payment date must be a valid date.`);
+    if (!date)
+      errors.push(`Row ${rowNumber}: payment date must be a valid date.`);
     if (!Number.isFinite(amount) || amount <= 0) {
       errors.push(`Row ${rowNumber}: amount must be greater than zero.`);
     }
@@ -241,10 +248,13 @@ function parseExpenseRows(rows) {
     const date = toIsoDate(row.date || row.expense_date);
     const amount = parseNumber(row.amount);
 
-    if (!date) errors.push(`Row ${rowNumber}: expense date must be a valid date.`);
+    if (!date)
+      errors.push(`Row ${rowNumber}: expense date must be a valid date.`);
     if (!row.category) errors.push(`Row ${rowNumber}: category is required.`);
     if (!Number.isFinite(amount) || amount < 0) {
-      errors.push(`Row ${rowNumber}: amount must be a valid non-negative number.`);
+      errors.push(
+        `Row ${rowNumber}: amount must be a valid non-negative number.`,
+      );
     }
 
     normalized.push({
@@ -445,17 +455,32 @@ function ReportsSection() {
       } else if (importType === "payments") {
         result = await importPayments(validation.rows);
         const parts = [];
-        if (result.importedCount) parts.push(`${result.importedCount} payment${result.importedCount === 1 ? "" : "s"} imported`);
-        if (result.skippedCount) parts.push(`${result.skippedCount} duplicate${result.skippedCount === 1 ? "" : "s"} skipped`);
-        if (result.errorCount) parts.push(`${result.errorCount} row${result.errorCount === 1 ? "" : "s"} failed`);
+        if (result.importedCount)
+          parts.push(
+            `${result.importedCount} payment${result.importedCount === 1 ? "" : "s"} imported`,
+          );
+        if (result.skippedCount)
+          parts.push(
+            `${result.skippedCount} duplicate${result.skippedCount === 1 ? "" : "s"} skipped`,
+          );
+        if (result.errorCount)
+          parts.push(
+            `${result.errorCount} row${result.errorCount === 1 ? "" : "s"} failed`,
+          );
         toast[result.errorCount && !result.importedCount ? "error" : "success"](
           parts.join(". ") || "No payments were imported.",
         );
       } else {
         result = await importExpenses(validation.rows);
         const parts = [];
-        if (result.importedCount) parts.push(`${result.importedCount} expense${result.importedCount === 1 ? "" : "s"} imported`);
-        if (result.errorCount) parts.push(`${result.errorCount} row${result.errorCount === 1 ? "" : "s"} failed`);
+        if (result.importedCount)
+          parts.push(
+            `${result.importedCount} expense${result.importedCount === 1 ? "" : "s"} imported`,
+          );
+        if (result.errorCount)
+          parts.push(
+            `${result.errorCount} row${result.errorCount === 1 ? "" : "s"} failed`,
+          );
         toast[result.errorCount && !result.importedCount ? "error" : "success"](
           parts.join(". ") || "No expenses were imported.",
         );
@@ -483,7 +508,10 @@ function ReportsSection() {
       <div className="page-head report-page-head">
         <div>
           <h1>Reports &amp; Import</h1>
-          <p>Export operational data and safely import existing spreadsheet records.</p>
+          <p>
+            Export operational data and safely import existing spreadsheet
+            records.
+          </p>
         </div>
         <button className="secondary" onClick={() => setImportOpen(true)}>
           <Upload size={16} /> Import CSV/XLSX
@@ -491,32 +519,227 @@ function ReportsSection() {
       </div>
 
       <div className="report-grid">
-        <div className="panel"><h2>Tenant report</h2><p>Active and historical tenants with rental history.</p><button className="secondary" onClick={() => exportRows("tenant-report", (tenants.data || []).map((tenant) => ({ name: `${tenant.first_name} ${tenant.last_name}`.trim(), phone: tenant.phone || "", email: tenant.email || "", status: tenant.status, tenancies: tenant.tenancies?.length || 0 })))}><Download size={15} /> Export CSV</button></div>
-        <div className="panel"><h2>Unit report</h2><p>Current unit inventory and default rent.</p><button className="secondary" onClick={() => exportRows("unit-report", (units.data || []).map((unit) => ({ unit: unit.unit_number, type: unit.unit_type, rent: unit.default_rent, status: unit.status })))}><Download size={15} /> Export CSV</button></div>
-        <div className="panel"><h2>Payment report</h2><p>All recorded payment transactions.</p><button className="secondary" onClick={() => exportRows("payment-report", (payments.data || []).map((payment) => ({ date: payment.payment_date, tenant: `${payment.tenants?.first_name || ""} ${payment.tenants?.last_name || ""}`.trim(), amount: payment.amount, method: payment.payment_method, reference: payment.reference_number || "", remarks: payment.notes || "" })))}><Download size={15} /> Export CSV</button></div>
-        <div className="panel"><h2>Expense report</h2><p>Expenses by date, category and unit.</p><button className="secondary" onClick={() => exportRows("expense-report", (expenses.data || []).map((expense) => ({ date: expense.expense_date, category: expense.category, description: expense.description, amount: expense.amount, unit: expense.units?.unit_number || "", vendor: expense.vendor || "" })))}><Download size={15} /> Export CSV</button></div>
+        <div className="panel">
+          <h2>Tenant report</h2>
+          <p>Active and historical tenants with rental history.</p>
+          <button
+            className="secondary"
+            onClick={() =>
+              exportRows(
+                "tenant-report",
+                (tenants.data || []).map((tenant) => ({
+                  name: `${tenant.first_name} ${tenant.last_name}`.trim(),
+                  phone: tenant.phone || "",
+                  email: tenant.email || "",
+                  status: tenant.status,
+                  tenancies: tenant.tenancies?.length || 0,
+                })),
+              )
+            }
+          >
+            <Download size={15} /> Export CSV
+          </button>
+        </div>
+        <div className="panel">
+          <h2>Unit report</h2>
+          <p>Current unit inventory and default rent.</p>
+          <button
+            className="secondary"
+            onClick={() =>
+              exportRows(
+                "unit-report",
+                (units.data || []).map((unit) => ({
+                  unit: unit.unit_number,
+                  type: unit.unit_type,
+                  rent: unit.default_rent,
+                  status: unit.status,
+                })),
+              )
+            }
+          >
+            <Download size={15} /> Export CSV
+          </button>
+        </div>
+        <div className="panel">
+          <h2>Payment report</h2>
+          <p>All recorded payment transactions.</p>
+          <button
+            className="secondary"
+            onClick={() =>
+              exportRows(
+                "payment-report",
+                (payments.data || []).map((payment) => ({
+                  date: payment.payment_date,
+                  tenant:
+                    `${payment.tenants?.first_name || ""} ${payment.tenants?.last_name || ""}`.trim(),
+                  amount: payment.amount,
+                  method: payment.payment_method,
+                  reference: payment.reference_number || "",
+                  remarks: payment.notes || "",
+                })),
+              )
+            }
+          >
+            <Download size={15} /> Export CSV
+          </button>
+        </div>
+        <div className="panel">
+          <h2>Expense report</h2>
+          <p>Expenses by date, category and unit.</p>
+          <button
+            className="secondary"
+            onClick={() =>
+              exportRows(
+                "expense-report",
+                (expenses.data || []).map((expense) => ({
+                  date: expense.expense_date,
+                  category: expense.category,
+                  description: expense.description,
+                  amount: expense.amount,
+                  unit: expense.units?.unit_number || "",
+                  vendor: expense.vendor || "",
+                })),
+              )
+            }
+          >
+            <Download size={15} /> Export CSV
+          </button>
+        </div>
       </div>
 
-      {importOpen && createPortal(
-        <div className="modal-backdrop">
-          <div className="modal report-import-modal">
-            <div className="modal-head"><div><h2>Import CSV/XLSX</h2><p>Preview your spreadsheet before writing anything to Supabase.</p></div><button className="icon-button" onClick={closeImport} disabled={importing}><X size={20} /></button></div>
-            <div className="form-grid">
-              <label>Import type<select value={importType} onChange={(event) => { setImportType(event.target.value); resetImport(); }} disabled={importing}>{IMPORT_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
-              <label>Spreadsheet<input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} disabled={loadingFile || importing} /></label>
+      {importOpen &&
+        createPortal(
+          <div className="modal-backdrop">
+            <div className="modal report-import-modal">
+              <div className="modal-head">
+                <div>
+                  <h2>Import CSV/XLSX</h2>
+                  <p>
+                    Preview your spreadsheet before writing anything to
+                    Supabase.
+                  </p>
+                </div>
+                <button
+                  className="icon-button"
+                  onClick={closeImport}
+                  disabled={importing}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="form-grid">
+                <label>
+                  Import type
+                  <select
+                    value={importType}
+                    onChange={(event) => {
+                      setImportType(event.target.value);
+                      resetImport();
+                    }}
+                    disabled={importing}
+                  >
+                    {IMPORT_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Spreadsheet
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleFile}
+                    disabled={loadingFile || importing}
+                  />
+                </label>
+              </div>
+              {fileName && (
+                <div className="panel report-import-status">
+                  <strong>Selected file:</strong> {fileName}
+                </div>
+              )}
+              {loadingFile && (
+                <div className="panel report-import-status">
+                  Reading spreadsheet...
+                </div>
+              )}
+              {rows.length > 0 && (
+                <>
+                  <div className="panel report-import-status">
+                    <div className="report-import-summary">
+                      <strong>
+                        {rows.length} row{rows.length === 1 ? "" : "s"} loaded
+                      </strong>
+                      <p>Review the first rows before importing.</p>
+                      {!validation?.errors?.length && (
+                        <span className="status-badge success">
+                          <CheckCircle2 size={14} /> Valid
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {validation?.errors?.length > 0 && (
+                    <div className="panel report-import-error">
+                      <strong>Validation errors</strong>
+                      <ul>
+                        {validation.errors.slice(0, 10).map((error) => (
+                          <li key={error}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="panel report-preview">
+                    <table>
+                      <thead>
+                        <tr>
+                          {Object.keys(rows[0]).map((key) => (
+                            <th key={key}>{key}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.slice(0, 10).map((row, index) => (
+                          <tr key={index}>
+                            {Object.keys(rows[0]).map((key) => (
+                              <td key={key}>{String(row[key] ?? "")}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+              <div className="modal-actions">
+                <button
+                  className="secondary"
+                  onClick={closeImport}
+                  disabled={importing}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="primary"
+                  onClick={importRows}
+                  disabled={
+                    importing ||
+                    loadingFile ||
+                    !rows.length ||
+                    Boolean(validation?.errors?.length)
+                  }
+                >
+                  {importing
+                    ? "Importing..."
+                    : `Import ${rows.length || 0} ${importLabel?.label || "Records"}`}
+                </button>
+              </div>
             </div>
-            {fileName && <div className="panel report-import-status"><strong>Selected file:</strong> {fileName}</div>}
-            {loadingFile && <div className="panel report-import-status">Reading spreadsheet...</div>}
-            {rows.length > 0 && <>
-              <div className="panel report-import-status"><div className="report-import-summary"><strong>{rows.length} row{rows.length === 1 ? "" : "s"} loaded</strong><p>Review the first rows before importing.</p>{!validation?.errors?.length && <span className="status-badge success"><CheckCircle2 size={14} /> Valid</span>}</div></div>
-              {validation?.errors?.length > 0 && <div className="panel report-import-error"><strong>Validation errors</strong><ul>{validation.errors.slice(0, 10).map((error) => <li key={error}>{error}</li>)}</ul></div>}
-              <div className="panel report-preview"><table><thead><tr>{Object.keys(rows[0]).map((key) => <th key={key}>{key}</th>)}</tr></thead><tbody>{rows.slice(0, 10).map((row, index) => <tr key={index}>{Object.keys(rows[0]).map((key) => <td key={key}>{String(row[key] ?? "")}</td>)}</tr>)}</tbody></table></div>
-            </>}
-            <div className="modal-actions"><button className="secondary" onClick={closeImport} disabled={importing}>Cancel</button><button className="primary" onClick={importRows} disabled={importing || loadingFile || !rows.length || Boolean(validation?.errors?.length)}>{importing ? "Importing..." : `Import ${rows.length || 0} ${importLabel?.label || "Records"}`}</button></div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
@@ -534,10 +757,37 @@ export default function Settings() {
     setLoadingKeys(true);
     try {
       const rows = await db.tenants.list();
-      setTenants(Array.isArray(rows) ? rows : []);
+      const allTenants = Array.isArray(rows) ? rows : [];
+
+      /*
+       * Tenant access keys are only available for tenants who are
+       * currently active and have an active tenancy/unit.
+       *
+       * This also cleans up any old keys left behind by tenants who
+       * were already moved out before this rule was added.
+       */
+      const activeTenants = allTenants.filter(
+        (tenant) => tenant.status === "active" && Boolean(currentUnit(tenant)),
+      );
+
+      const inactiveWithKeys = allTenants.filter(
+        (tenant) =>
+          tenant.tenant_access_key &&
+          !(tenant.status === "active" && Boolean(currentUnit(tenant))),
+      );
+
+      // Disable stale access keys for moved-out/historical tenants.
+      await Promise.all(
+        inactiveWithKeys.map((tenant) =>
+          db.tenants.update(tenant.id, { tenant_access_key: null }),
+        ),
+      );
+
+      setTenants(activeTenants);
+
       setHiddenKeys(
         Object.fromEntries(
-          (Array.isArray(rows) ? rows : [])
+          activeTenants
             .filter((tenant) => tenant.tenant_access_key)
             .map((tenant) => [tenant.id, true]),
         ),
@@ -728,7 +978,7 @@ export default function Settings() {
               <EmptyState
                 icon={KeyRound}
                 title="No tenant access keys yet"
-                message="Add a tenant to create a private portal key."
+                message="Only active tenants with an active unit can have a private portal key."
               />
             </div>
           ) : (

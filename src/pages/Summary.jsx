@@ -3,13 +3,72 @@ import { Download, FileText, Receipt, Wallet } from "lucide-react";
 import EmptyState from "../components/EmptyState";
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
-import { compareUnitNumbers, currentMonth, money, csvDownload } from "../lib/utils";
+import {
+  compareUnitNumbers,
+  currentMonth,
+  money,
+  csvDownload,
+} from "../lib/utils";
+
+function formatSummaryPaymentMethod(value) {
+  const method = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (method === "gcash" || method === "g-cash") return "G-Cash";
+  if (
+    ["maribank", "bank transfer", "bank_transfer", "maya", "other"].includes(
+      method,
+    )
+  ) {
+    return "Maribank";
+  }
+
+  if (method === "cash") return "Cash";
+  return value ? String(value) : "—";
+}
+
+function getPaymentMethodClass(value) {
+  const method = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (method === "gcash" || method === "g-cash") return "gcash";
+  if (
+    ["maribank", "bank transfer", "bank_transfer", "maya", "other"].includes(
+      method,
+    )
+  ) {
+    return "maribank";
+  }
+
+  if (method === "cash") return "cash";
+  return "other";
+}
+
+function formatSummaryPaymentType(value) {
+  return String(value || "other")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getPaymentTypeClass(value) {
+  const type = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (type === "rent") return "rent";
+  if (type === "deposit") return "deposit";
+  if (type === "advance") return "advance";
+  return "other";
+}
 
 export default function Summary() {
   const [month, setMonth] = useState(currentMonth());
   const b = useAsync(() => db.billing.list(month), [month]),
     p = useAsync(() => db.payments.list(), [month]),
-    e = useAsync(() => db.expenses.list(), []);
+    e = useAsync(() => db.expenses.list(), []),
+    u = useAsync(() => db.units.list(), []);
   const bills = [...(b.data || [])].sort((a, b) =>
       compareUnitNumbers(
         a.tenancies?.units?.unit_number || a.unit_id,
@@ -100,16 +159,7 @@ export default function Summary() {
       <div className="summary-stats">
         <div className="summary-stat">
           <span>Total units</span>
-          <strong>
-            {new Set(
-              bills
-                .map(
-                  (x) =>
-                    x.tenancies?.units?.id || x.tenancies?.unit_id || x.unit_id,
-                )
-                .filter(Boolean),
-            ).size || "0"}
-          </strong>
+          <strong>{u.loading ? "…" : (u.data || []).length}</strong>
         </div>
         <div className="summary-stat">
           <span>Occupied</span>
@@ -140,8 +190,8 @@ export default function Summary() {
         <section className="panel tenant-payment-panel">
           <div className="panel-head">
             <div>
-              <h2>Tenant payment summary</h2>
-              <p>Monthly rent only — advances and deposits stay separate.</p>
+              <h2>Payment summary</h2>
+              <p>Summary of Rental collections</p>
             </div>
           </div>
           <div className="table-wrap">
@@ -154,6 +204,7 @@ export default function Summary() {
                   <th>Due date</th>
                   <th>Amount due</th>
                   <th>Total paid</th>
+                  <th>Payment method</th>
                   <th>Balance</th>
                   <th>Status</th>
                 </tr>
@@ -167,6 +218,15 @@ export default function Summary() {
                   const amountDue = Number(record.amount_due || 0);
                   const balance = Math.max(amountDue - paid, 0);
                   const tenant = record.tenancies?.tenants;
+                  const paymentMethods = [
+                    ...new Set(
+                      (record.payments || [])
+                        .map((payment) =>
+                          formatSummaryPaymentMethod(payment.payment_method),
+                        )
+                        .filter((method) => method !== "—"),
+                    ),
+                  ];
 
                   return (
                     <tr key={record.id}>
@@ -183,17 +243,59 @@ export default function Summary() {
                       <td>{money(amountDue)}</td>
                       <td>{money(paid)}</td>
                       <td>
+                        <div className="summary-payment-methods">
+                          {paymentMethods.length ? (
+                            paymentMethods.map((method) => (
+                              <span
+                                key={method}
+                                className={`summary-payment-method ${getPaymentMethodClass(
+                                  method,
+                                )}`}
+                              >
+                                {method}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="summary-payment-method empty">
+                              —
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
                         <strong>{money(balance)}</strong>
                       </td>
                       <td>
                         <span
-                          className={`summary-status ${balance <= 0 && amountDue > 0 ? "paid" : balance > 0 && paid > 0 ? "partial" : "not-due"}`}
+                          className={`payment-status-badge ${
+                            balance <= 0 && amountDue > 0
+                              ? "paid"
+                              : balance > 0 && paid > 0
+                                ? "partial"
+                                : month > currentMonth()
+                                  ? "not-due"
+                                  : record.due_date <
+                                      new Date().toISOString().slice(0, 10)
+                                    ? "overdue"
+                                    : record.due_date ===
+                                        new Date().toISOString().slice(0, 10)
+                                      ? "due"
+                                      : "upcoming"
+                          }`}
                         >
                           {balance <= 0 && amountDue > 0
                             ? "Paid"
                             : balance > 0 && paid > 0
                               ? "Partially Paid"
-                              : "Not Due"}
+                              : month > currentMonth()
+                                ? "Not Due"
+                                : record.due_date <
+                                    new Date().toISOString().slice(0, 10)
+                                  ? "Overdue"
+                                  : record.due_date ===
+                                      new Date().toISOString().slice(0, 10)
+                                    ? "Due"
+                                    : "Upcoming"}
                         </span>
                       </td>
                     </tr>
@@ -201,7 +303,7 @@ export default function Summary() {
                 })}
                 {!bills.length && (
                   <tr>
-                    <td colSpan="8">
+                    <td colSpan="9">
                       <EmptyState
                         icon={FileText}
                         title="No billing records yet"
@@ -249,7 +351,7 @@ export default function Summary() {
       <section className="panel other-payments-panel">
         <div className="panel-head">
           <div>
-            <h2>Other tenant payments</h2>
+            <h2>Other Payments</h2>
             <p>Deposits, advance rent, and other payment types.</p>
           </div>
         </div>
@@ -259,7 +361,7 @@ export default function Summary() {
               <tr>
                 <th>Tenant</th>
                 <th>Unit</th>
-                <th>Payment Type</th>
+                <th>Type</th>
                 <th>Amount</th>
                 <th>Paid</th>
                 <th>Balance</th>
@@ -273,9 +375,9 @@ export default function Summary() {
                 const amount = Number(payment.amount || 0);
                 const tenant = payment.tenants;
                 const unit = payment.tenancies?.units?.unit_number || "—";
-                const paymentType = String(payment.payment_type || "other")
-                  .replace(/_/g, " ")
-                  .replace(/\b\w/g, (letter) => letter.toUpperCase());
+                const paymentType = formatSummaryPaymentType(
+                  payment.payment_type,
+                );
 
                 return (
                   <tr key={payment.id}>
@@ -286,7 +388,11 @@ export default function Summary() {
                     </td>
                     <td>{unit}</td>
                     <td>
-                      <span className="summary-payment-type">
+                      <span
+                        className={`summary-payment-type ${getPaymentTypeClass(
+                          payment.payment_type,
+                        )}`}
+                      >
                         {paymentType}
                       </span>
                     </td>
@@ -296,7 +402,15 @@ export default function Summary() {
                       <strong>{money(0)}</strong>
                     </td>
                     <td>{payment.payment_date || "—"}</td>
-                    <td>{payment.payment_method || "—"}</td>
+                    <td>
+                      <span
+                        className={`summary-payment-method ${getPaymentMethodClass(
+                          payment.payment_method,
+                        )}`}
+                      >
+                        {formatSummaryPaymentMethod(payment.payment_method)}
+                      </span>
+                    </td>
                     <td>{payment.notes || "—"}</td>
                   </tr>
                 );

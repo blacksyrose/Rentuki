@@ -45,19 +45,15 @@
 }
 
 @media (max-width: 1100px) {
-
   .summary-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-
 }
 
 @media (max-width: 800px) {
-
   .summary-grid {
     grid-template-columns: 1fr 1fr;
   }
-
 }
 
 .finance-list > div,
@@ -433,7 +429,6 @@
 }
 
 @media (max-width: 1180px) {
-
   .monthly-summary-cards {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -441,11 +436,9 @@
   .monthly-summary-main-grid {
     grid-template-columns: 1fr;
   }
-
 }
 
 @media (max-width: 800px) {
-
   .monthly-summary-actions {
     width: 100%;
     flex-wrap: wrap;
@@ -463,11 +456,9 @@
   .monthly-summary-other-grid {
     grid-template-columns: 1fr;
   }
-
 }
 
 @media (max-width: 520px) {
-
   .monthly-summary-cards {
     grid-template-columns: 1fr;
   }
@@ -475,7 +466,6 @@
   .monthly-summary-outstanding {
     padding: 17px;
   }
-
 }
 
 .summary-page {
@@ -517,7 +507,7 @@
 
 .summary-main-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.85fr);
+  grid-template-columns: minmax(0, 1.95fr) minmax(210px, 0.55fr);
   gap: 12px;
   margin-bottom: 12px;
   align-items: stretch;
@@ -547,7 +537,8 @@
 }
 
 .tenant-payment-panel table {
-  min-width: 760px;
+  width: 100%;
+  min-width: 900px;
 }
 
 .tenant-payment-panel th,
@@ -675,17 +666,77 @@
 .summary-payment-type {
   display: inline-flex;
   align-items: center;
-  padding: 3px 7px;
+  justify-content: center;
+  min-height: 20px;
+  padding: 4px 8px;
   border-radius: 999px;
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.summary-payment-type.rent {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.summary-payment-type.deposit {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.summary-payment-type.advance {
+  background: #fff1df;
+  color: #b76500;
+}
+
+.summary-payment-type.other {
   background: #eef3ef;
   color: #46675a;
+}
+
+.summary-payment-methods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-payment-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 4px 8px;
+  border-radius: 999px;
   font-size: 9px;
-  font-weight: 700;
-  text-transform: capitalize;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.summary-payment-method.cash {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.summary-payment-method.gcash {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.summary-payment-method.maribank {
+  background: #fff1df;
+  color: #b76500;
+}
+
+.summary-payment-method.other,
+.summary-payment-method.empty {
+  background: #eef3ef;
+  color: #66766f;
 }
 
 @media (max-width: 1100px) {
-
   .summary-stats {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -697,15 +748,12 @@
   .summary-outstanding {
     min-height: 180px;
   }
-
 }
 
 @media (max-width: 650px) {
-
   .summary-stats {
     grid-template-columns: 1fr 1fr;
   }
-
 }
 
 .finance-list > div,
@@ -1102,7 +1150,6 @@
 }
 
 @media (max-width: 1180px) {
-
   .monthly-summary-cards {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1110,11 +1157,9 @@
   .monthly-summary-main-grid {
     grid-template-columns: 1fr;
   }
-
 }
 
 @media (max-width: 800px) {
-
   .monthly-summary-actions {
     width: 100%;
     flex-wrap: wrap;
@@ -1132,11 +1177,9 @@
   .monthly-summary-other-grid {
     grid-template-columns: 1fr;
   }
-
 }
 
 @media (max-width: 520px) {
-
   .monthly-summary-cards {
     grid-template-columns: 1fr;
   }
@@ -1144,7 +1187,6 @@
   .monthly-summary-outstanding {
     padding: 17px;
   }
-
 }
 
 .summary-page {
@@ -1186,7 +1228,7 @@
 
 .summary-main-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.85fr);
+  grid-template-columns: minmax(0, 1.95fr) minmax(210px, 0.55fr);
   gap: 12px;
   margin-bottom: 12px;
   align-items: stretch;
@@ -1216,7 +1258,8 @@
 }
 
 .tenant-payment-panel table {
-  min-width: 760px;
+  width: 100%;
+  min-width: 900px;
 }
 
 .tenant-payment-panel th,
@@ -1341,20 +1384,67 @@
   font-size: 8px;
 }
 
-.summary-payment-type {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 7px;
-  border-radius: 999px;
+.summary-payment-type.rent {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.summary-payment-type.deposit {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.summary-payment-type.advance {
+  background: #fff1df;
+  color: #b76500;
+}
+
+.summary-payment-type.other {
   background: #eef3ef;
   color: #46675a;
+}
+
+.summary-payment-methods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-payment-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 4px 8px;
+  border-radius: 999px;
   font-size: 9px;
-  font-weight: 700;
-  text-transform: capitalize;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.summary-payment-method.cash {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.summary-payment-method.gcash {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.summary-payment-method.maribank {
+  background: #fff1df;
+  color: #b76500;
+}
+
+.summary-payment-method.other,
+.summary-payment-method.empty {
+  background: #eef3ef;
+  color: #66766f;
 }
 
 @media (max-width: 1100px) {
-
   .summary-stats {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1366,13 +1456,10 @@
   .summary-outstanding {
     min-height: 180px;
   }
-
 }
 
 @media (max-width: 650px) {
-
   .summary-stats {
     grid-template-columns: 1fr 1fr;
   }
-
 }

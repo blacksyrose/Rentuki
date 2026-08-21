@@ -1,6 +1,6 @@
 /* Rentuki Maintenance styles */
 
- .stat-icon.danger {
+.stat-icon.danger {
   background: #ffeded;
   color: #bd3e3e;
 }
@@ -226,12 +226,12 @@
 
 .maintenance-table th:nth-child(1),
 .maintenance-table td:nth-child(1) {
-  width: 15%;
+  width: 10%;
 }
 
 .maintenance-table th:nth-child(2),
 .maintenance-table td:nth-child(2) {
-  width: 5%;
+  width: 3%;
 }
 
 .maintenance-table th:nth-child(3),
@@ -241,17 +241,17 @@
 
 .maintenance-table th:nth-child(4),
 .maintenance-table td:nth-child(4) {
-  width: 7%;
+  width: 5%;
 }
 
 .maintenance-table th:nth-child(5),
 .maintenance-table td:nth-child(5) {
-  width: 7%;
+  width: 10%;
 }
 
 .maintenance-table th:nth-child(6),
 .maintenance-table td:nth-child(6) {
-  width: 10%;
+  width: 5%;
 }
 
 .maintenance-table th:nth-child(7),
@@ -264,20 +264,53 @@
   width: 5%;
 }
 
-.priority-low {
-  color: #4e677e;
+.maintenance-priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+  text-transform: capitalize;
 }
 
-.priority-medium {
-  color: #65738a;
+.maintenance-priority.priority-low {
+  background: #ecfdf5;
+  color: #16845b;
+  border: 1px solid #d1fae5;
 }
 
-.priority-high {
-  color: #d66b00;
+.maintenance-priority.priority-medium {
+  background: #eef4ff;
+  color: #3b6ea8;
+  border: 1px solid #dce9ff;
 }
 
-.priority-urgent {
-  color: #d33c3c;
+.maintenance-priority.priority-high {
+  background: #fff5e8;
+  color: #c56a08;
+  border: 1px solid #f8dfba;
+}
+
+.maintenance-priority.priority-urgent {
+  background: #fff0f0;
+  color: #c63d3d;
+  border: 1px solid #f5d0d0;
+}
+
+.maintenance-status-select {
+  min-height: 20px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+  text-transform: capitalize;
 }
 
 .maintenance-status-select.status-open {
@@ -406,7 +439,6 @@
 }
 
 @media (max-width: 1100px) {
-
   .maintenance-page {
     width: 100%;
   }
@@ -414,11 +446,9 @@
   .maintenance-table {
     min-width: 900px;
   }
-
 }
 
 @media (max-width: 700px) {
-
   .maintenance-stats {
     grid-template-columns: 1fr;
   }
@@ -434,11 +464,9 @@
   .expense-table-panel .maintenance-search-bar {
     width: auto;
   }
-
 }
 
 @media (max-width: 520px) {
-
   .maintenance-tabs {
     width: 100%;
   }
@@ -450,7 +478,6 @@
   .maintenance-stat-card {
     min-height: 60px;
   }
-
 }
 
 .stat-icon.danger {
@@ -825,7 +852,6 @@
 }
 
 @media (max-width: 1100px) {
-
   .maintenance-page {
     width: 100%;
   }
@@ -833,11 +859,9 @@
   .maintenance-table {
     min-width: 900px;
   }
-
 }
 
 @media (max-width: 700px) {
-
   .maintenance-stats {
     grid-template-columns: 1fr;
   }
@@ -853,11 +877,9 @@
   .expense-table-panel .maintenance-search-bar {
     width: auto;
   }
-
 }
 
 @media (max-width: 520px) {
-
   .maintenance-tabs {
     width: 100%;
   }
@@ -869,5 +891,4 @@
   .maintenance-stat-card {
     min-height: 60px;
   }
-
 }

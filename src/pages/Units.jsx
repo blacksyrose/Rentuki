@@ -222,7 +222,17 @@ export default function Units() {
                   <Building2 size={18} />
                 </div>
 
-                <StatusBadge status={u.status} />
+                <span className={`unit-status-badge ${u.status}`}>
+                  {u.status === "available"
+                    ? "Available"
+                    : u.status === "reserved"
+                      ? "Reserved"
+                      : u.status === "maintenance"
+                        ? "Maintenance"
+                        : u.status === "unavailable"
+                          ? "Unavailable"
+                          : "Occupied"}
+                </span>
               </div>
 
               <div className="unit-card-title">

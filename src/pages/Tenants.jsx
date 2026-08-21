@@ -29,7 +29,6 @@ export default function Tenants() {
   const [q, setQ] = useState("");
   const [historical, setHistorical] = useState(false);
 
-
   const [open, setOpen] = useState(false);
 
   const [selectedTenant, setSelectedTenant] = useState(null);
@@ -83,6 +82,7 @@ export default function Tenants() {
 
   const [editTenancyForm, setEditTenancyForm] = useState({
     start_date: "",
+    end_date: "",
     monthly_rent: "",
     payment_due_day: "5",
     deposit_amount: "0",
@@ -106,11 +106,14 @@ export default function Tenants() {
         .includes(q.toLowerCase()),
     )
     .sort((left, right) => {
-      const leftUnit = (left.tenancies || []).find((tenancy) => tenancy.status === "active")?.units;
-      const rightUnit = (right.tenancies || []).find((tenancy) => tenancy.status === "active")?.units;
+      const leftUnit = (left.tenancies || []).find(
+        (tenancy) => tenancy.status === "active",
+      )?.units;
+      const rightUnit = (right.tenancies || []).find(
+        (tenancy) => tenancy.status === "active",
+      )?.units;
       return compareUnitNumbers(leftUnit, rightUnit);
     });
-
 
   const tenantBalanceMap = useMemo(() => {
     const map = new Map();
@@ -329,6 +332,7 @@ export default function Tenants() {
 
     setEditTenancyForm({
       start_date: tenancy.start_date || "",
+      end_date: tenancy.end_date || "",
       monthly_rent: tenancy.monthly_rent ?? "",
       payment_due_day: String(tenancy.payment_due_day ?? "5"),
       deposit_amount: tenancy.deposit_amount ?? "0",
@@ -344,6 +348,13 @@ export default function Tenants() {
     try {
       if (!editTenancyForm.start_date) {
         throw new Error("Move-in date is required.");
+      }
+
+      if (
+        editTenancyForm.end_date &&
+        editTenancyForm.end_date < editTenancyForm.start_date
+      ) {
+        throw new Error("End date cannot be before the move-in date.");
       }
 
       const monthlyRent = Number(editTenancyForm.monthly_rent);
@@ -366,6 +377,7 @@ export default function Tenants() {
 
       await db.tenancies.update(editingTenancy.id, {
         start_date: editTenancyForm.start_date,
+        end_date: editTenancyForm.end_date || null,
         monthly_rent: monthlyRent,
         payment_due_day: dueDay,
         deposit_amount: depositAmount,
@@ -430,7 +442,9 @@ export default function Tenants() {
       });
 
       toast.success(
-        `Tenant ${selectedTenant.first_name} ${selectedTenant.last_name} has been moved out.`,
+        `Tenant ${[selectedTenant.first_name, selectedTenant.last_name]
+          .filter(Boolean)
+          .join(" ")} has been moved out.`,
       );
 
       const tenantId = selectedTenant.id;
@@ -554,7 +568,10 @@ export default function Tenants() {
       <div className="page-head tenant-directory-head">
         <div>
           <h1>Tenant Directory</h1>
-          <p>Database of tenant contact info, active leases, and rental histories.</p>
+          <p>
+            Database of tenant contact info, active leases, and rental
+            histories.
+          </p>
         </div>
 
         <button
@@ -628,7 +645,9 @@ export default function Tenants() {
                           </span>
                           <span className="tenant-name-copy">
                             <strong>
-                              {t.first_name} {t.last_name}
+                              {[t.first_name, t.last_name]
+                                .filter(Boolean)
+                                .join(" ")}
                             </strong>
                             <small>
                               {t.phone || t.email || "No contact number"}
@@ -828,7 +847,7 @@ export default function Tenants() {
             </select>
           </label>
 
-            <label className="full-span">
+          <label className="full-span">
             Notes
             <textarea
               value={form.notes}
@@ -866,7 +885,9 @@ export default function Tenants() {
         onClose={() => setProfileOpen(false)}
         title={
           selectedTenant
-            ? `${selectedTenant.first_name} ${selectedTenant.last_name}`
+            ? [selectedTenant.first_name, selectedTenant.last_name]
+                .filter(Boolean)
+                .join(" ")
             : "Tenant"
         }
         wide
@@ -916,7 +937,19 @@ export default function Tenants() {
 
               <p>
                 <strong>Status:</strong>{" "}
-                <StatusBadge status={selectedTenant.status} />
+                {selectedTenant.status === "active" ? (
+                  <span className="tenant-history-status tenant-history-status-active">
+                    Active
+                  </span>
+                ) : selectedTenant.status === "moved_out" ? (
+                  <span className="tenant-history-status tenant-history-status-moved-out">
+                    Moved out
+                  </span>
+                ) : (
+                  <span className="tenant-history-status tenant-history-status-ended">
+                    Ended
+                  </span>
+                )}
               </p>
 
               {selectedTenant.notes && (
@@ -1060,6 +1093,7 @@ export default function Tenants() {
                         <th>End</th>
                         <th>Rent</th>
                         <th>Status</th>
+                        <th>Action</th>
                       </tr>
                     </thead>
 
@@ -1081,7 +1115,29 @@ export default function Tenants() {
                             <td>{money(t.monthly_rent)}</td>
 
                             <td>
-                              <StatusBadge status={t.status} />
+                              {t.status === "active" ? (
+                                <span className="tenant-history-status tenant-history-status-active">
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="tenant-history-status tenant-history-status-ended">
+                                  Ended
+                                </span>
+                              )}
+                            </td>
+
+                            <td>
+                              <button
+                                type="button"
+                                className="small-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditTenancy(t);
+                                }}
+                              >
+                                <Pencil size={13} />
+                                Edit
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -1094,15 +1150,7 @@ export default function Tenants() {
         )}
       </Modal>
 
-      {/* ======================================================
-          TENANT PORTAL KEY
-      ====================================================== */}
-
-
-
-      {/* ======================================================
-    EDIT TENANT
-====================================================== */}
+      {/* EDIT TENANT */}
 
       <Modal
         open={editTenantOpen}
@@ -1309,7 +1357,7 @@ export default function Tenants() {
       <Modal
         open={Boolean(editingTenancy)}
         onClose={() => setEditingTenancy(null)}
-        title="Edit current tenancy"
+        title="Edit tenancy"
       >
         <form className="form-grid" onSubmit={saveEditTenancy}>
           <div className="full-span">
@@ -1344,6 +1392,21 @@ export default function Tenants() {
                 setEditTenancyForm({
                   ...editTenancyForm,
                   start_date: e.target.value,
+                })
+              }
+            />
+          </label>
+
+          <label>
+            End date
+            <input
+              type="date"
+              min={editTenancyForm.start_date || undefined}
+              value={editTenancyForm.end_date}
+              onChange={(e) =>
+                setEditTenancyForm({
+                  ...editTenancyForm,
+                  end_date: e.target.value,
                 })
               }
             />

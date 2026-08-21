@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Pencil, Plus, Receipt, Search, Trash2, Wrench } from "lucide-react";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
@@ -14,6 +15,7 @@ const emptyMaintenanceForm = () => ({
   description: "",
   priority: "medium",
   status: "open",
+  assigned_person: "",
   estimated_cost: "",
   actual_cost: "",
   reported_date: new Date().toISOString().slice(0, 10),
@@ -21,7 +23,7 @@ const emptyMaintenanceForm = () => ({
 
 const emptyExpenseForm = () => ({
   unit_id: "",
-  category: "Maintenance",
+  category: "Salary",
   description: "",
   amount: "",
   expense_date: new Date().toISOString().slice(0, 10),
@@ -33,21 +35,15 @@ const emptyExpenseForm = () => ({
 
 export default function Maintenance() {
   const maintenance = useAsync(() => db.maintenance.list(), []);
-
   const expenses = useAsync(() => db.expenses.list(), []);
-
   const units = useAsync(() => db.units.list(), []);
-
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState("maintenance");
   const [open, setOpen] = useState(false);
-
   const [editingMaintenance, setEditingMaintenance] = useState(null);
-
   const [editingExpense, setEditingExpense] = useState(null);
-
   const [form, setForm] = useState(emptyMaintenanceForm());
   const [search, setSearch] = useState("");
-
   const toast = useToast();
 
   /* ---------------------------------------------------------------------- */
@@ -96,6 +92,7 @@ export default function Maintenance() {
       description: item.description || "",
       priority: item.priority || "medium",
       status: item.status || "open",
+      assigned_person: item.assigned_person || "",
       estimated_cost: item.estimated_cost ?? "",
       actual_cost: item.actual_cost ?? "",
       reported_date:
@@ -104,6 +101,26 @@ export default function Maintenance() {
 
     setOpen(true);
   };
+
+  useEffect(() => {
+    const maintenanceId = searchParams.get("maintenanceId");
+
+    if (!maintenanceId || maintenance.loading || !maintenance.data?.length) {
+      return;
+    }
+
+    const item = maintenance.data.find(
+      (record) => String(record.id) === String(maintenanceId),
+    );
+
+    if (item) {
+      setTab("maintenance");
+      setEditingExpense(null);
+      openEditMaintenance(item);
+
+      setSearchParams({}, { replace: true });
+    }
+  }, [maintenance.loading, maintenance.data, searchParams, setSearchParams]);
 
   /* ---------------------------------------------------------------------- */
   /* Open expense edit                                                       */
@@ -128,9 +145,7 @@ export default function Maintenance() {
     setOpen(true);
   };
 
-  /* ---------------------------------------------------------------------- */
-  /* Save                                                                    */
-  /* ---------------------------------------------------------------------- */
+  /* Save */
 
   const save = async (event) => {
     event.preventDefault();
@@ -143,6 +158,7 @@ export default function Maintenance() {
           description: String(form.description || "").trim() || null,
           priority: form.priority,
           status: form.status,
+          assigned_person: String(form.assigned_person || "").trim() || null,
           estimated_cost: Number(form.estimated_cost || 0),
           actual_cost: Number(form.actual_cost || 0),
           reported_date: form.reported_date,
@@ -180,6 +196,7 @@ export default function Maintenance() {
           description: String(form.description || "").trim() || null,
           priority: form.priority,
           status: form.status,
+          assigned_person: String(form.assigned_person || "").trim() || null,
           estimated_cost: Number(form.estimated_cost || 0),
           actual_cost: Number(form.actual_cost || 0),
           reported_date: form.reported_date,
@@ -296,6 +313,7 @@ export default function Maintenance() {
       item.description,
       item.priority,
       item.status,
+      item.assigned_person,
       item.reported_date,
       item.units?.unit_number,
     ]
@@ -515,7 +533,7 @@ export default function Maintenance() {
                         </select>
                       </td>
 
-                      <td>{m.assigned_to || "—"}</td>
+                      <td>{m.assigned_person || "—"}</td>
 
                       <td>{money(m.actual_cost || m.estimated_cost || 0)}</td>
 
@@ -549,8 +567,16 @@ export default function Maintenance() {
                       <td colSpan="8" className="maintenance-empty-row">
                         <EmptyState
                           icon={Wrench}
-                          title={search ? "No requests found" : "No maintenance requests yet"}
-                          message={search ? "Try a different search." : "Open requests will appear here."}
+                          title={
+                            search
+                              ? "No requests found"
+                              : "No maintenance requests yet"
+                          }
+                          message={
+                            search
+                              ? "Try a different search."
+                              : "Open requests will appear here."
+                          }
                         />
                       </td>
                     </tr>
@@ -647,8 +673,16 @@ export default function Maintenance() {
                       <td colSpan="7" className="maintenance-empty-row">
                         <EmptyState
                           icon={Receipt}
-                          title={search ? "No expenses found" : "No expenses recorded yet"}
-                          message={search ? "Try a different search." : "Recorded expenses will appear here."}
+                          title={
+                            search
+                              ? "No expenses found"
+                              : "No expenses recorded yet"
+                          }
+                          message={
+                            search
+                              ? "Try a different search."
+                              : "Recorded expenses will appear here."
+                          }
                         />
                       </td>
                     </tr>
@@ -728,6 +762,21 @@ export default function Maintenance() {
 
                 <option value="cancelled">Cancelled</option>
               </select>
+            </label>
+
+            <label>
+              Assigned Person
+              <input
+                type="text"
+                value={form.assigned_person}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    assigned_person: e.target.value,
+                  })
+                }
+                placeholder="e.g. Maintenance Staff"
+              />
             </label>
 
             <label>
@@ -841,24 +890,12 @@ export default function Maintenance() {
                   })
                 }
               >
-                <option>Maintenance</option>
-
-                <option>Utilities</option>
-
-                <option>Repairs</option>
-
-                <option>Supplies</option>
-
-                <option>Cleaning</option>
-
-                <option>Taxes</option>
-
-                <option>Insurance</option>
-
-                <option>Other</option>
+                <option value="Salary">Salary</option>
+                <option value="Utilities">Utilities</option>
+                <option value="Materials">Materials</option>
+                <option value="Other">Other</option>
               </select>
             </label>
-
             <label className="full-span">
               Description
               <input

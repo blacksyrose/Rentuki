@@ -853,3 +853,33 @@
   }
 
 }
+
+.tenant-history-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Active - Green */
+.tenant-history-status-active {
+  background: #e9f8f0;
+  color: #00845f;
+}
+
+/* Ended - Red */
+.tenant-history-status-ended {
+  background: #fdecec;
+  color: #dc2626;
+}
+
+/* Moved Out - Red */
+.tenant-history-status-moved-out {
+  background: #fdecec;
+  color: #dc2626;
+}

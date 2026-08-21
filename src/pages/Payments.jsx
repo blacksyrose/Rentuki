@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ChevronDown, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
-import StatusBadge from "../components/StatusBadge";
 import {
   db,
   generateBillingForActiveTenancies,
@@ -12,7 +12,12 @@ import {
   deletePayment,
 } from "../services/db";
 import { useAsync } from "../hooks/useData";
-import { compareUnitNumbers, currentMonth, money, monthLabel } from "../lib/utils";
+import {
+  compareUnitNumbers,
+  currentMonth,
+  money,
+  monthLabel,
+} from "../lib/utils";
 import { useToast } from "../components/Toast";
 
 function paidAmount(record) {
@@ -44,22 +49,64 @@ function statusLabel(record) {
   return "Upcoming";
 }
 
+function statusBadgeClass(status) {
+  const normalized = String(status || "").toLowerCase();
+
+  if (normalized === "overdue") return "overdue";
+  if (normalized === "due") return "due";
+  if (normalized === "upcoming") return "upcoming";
+  if (normalized === "partially paid") return "partial";
+  if (normalized === "paid") return "paid";
+  if (normalized === "waived") return "waived";
+
+  return "";
+}
+
+function paymentTypeBadgeClass(value) {
+  const type = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (type === "rent") return "rent";
+  if (type === "deposit") return "deposit";
+  if (type === "advance") return "advance";
+  return "other";
+}
+
+function paymentMethodBadgeClass(value) {
+  const method = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (method === "cash") return "cash";
+  if (method === "gcash" || method === "g-cash") return "gcash";
+
+  if (
+    ["maribank", "bank transfer", "bank_transfer", "maya", "other"].includes(
+      method,
+    )
+  ) {
+    return "maribank";
+  }
+
+  return "other";
+}
+
 function tenantName(tenant) {
   const full = `${tenant?.first_name || ""} ${tenant?.last_name || ""}`.trim();
   return full || tenant?.full_name || "Unnamed tenant";
 }
 
 function activeTenancies(tenant) {
-  return (tenant?.tenancies || []).filter(
-    (tenancy) => tenancy.status === "active" && !tenancy.end_date,
-  ).sort((left, right) =>
-    compareUnitNumbers(left.units, right.units),
-  );
+  return (tenant?.tenancies || [])
+    .filter((tenancy) => tenancy.status === "active" && !tenancy.end_date)
+    .sort((left, right) => compareUnitNumbers(left.units, right.units));
 }
 
 export default function Payments() {
   const [month, setMonth] = useState(currentMonth());
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const bill = useAsync(async () => {
     await syncBillingStatuses(month);
@@ -125,7 +172,6 @@ export default function Payments() {
   };
 
   const openPay = (billingRecord) => {
-    const tenant = billingRecord.tenancies?.tenants;
     const tenantId = billingRecord.tenancies?.tenant_id || "";
     const tenancyId = billingRecord.tenancy_id || "";
 
@@ -142,6 +188,58 @@ export default function Payments() {
     });
     setOpen(true);
   };
+  useEffect(() => {
+    const billingId = searchParams.get("billingId");
+
+    if (!billingId) return;
+
+    let cancelled = false;
+
+    const loadBillingRecord = async () => {
+      try {
+        const allBilling = await db.billing.listAll();
+
+        if (cancelled) return;
+
+        const record = (allBilling || []).find(
+          (item) => String(item.id) === String(billingId),
+        );
+
+        if (!record) return;
+
+        const recordMonth = String(record.billing_month || "").slice(0, 7);
+
+        if (recordMonth && recordMonth !== month) {
+          setMonth(recordMonth);
+        }
+      } catch (error) {
+        console.error("Unable to load notification billing record:", error);
+      }
+    };
+
+    loadBillingRecord();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, month]);
+
+  useEffect(() => {
+    const billingId = searchParams.get("billingId");
+
+    if (!billingId || bill.loading || !bill.data?.length) {
+      return;
+    }
+
+    const record = bill.data.find(
+      (item) => String(item.id) === String(billingId),
+    );
+
+    if (record) {
+      openPay(record);
+      setSearchParams({}, { replace: true });
+    }
+  }, [bill.loading, bill.data, searchParams, setSearchParams]);
 
   const openOtherPayment = (paymentType) => {
     setSelected(null);
@@ -238,11 +336,7 @@ export default function Payments() {
         const billingMonth = String(selected.billing_month || "").slice(0, 7);
         const paymentMonth = String(form.payment_date || "").slice(0, 7);
 
-        if (
-          billingMonth &&
-          paymentMonth &&
-          paymentMonth < billingMonth
-        ) {
+        if (billingMonth && paymentMonth && paymentMonth < billingMonth) {
           throw new Error(
             `Payment date cannot be before the billing month (${billingMonth}).`,
           );
@@ -370,68 +464,74 @@ export default function Payments() {
                   ),
                 )
                 .map((record) => {
-                const paid = paidAmount(record);
-                const balance = Math.max(
-                  Number(record.amount_due || 0) - paid,
-                  0,
-                );
-                const tenant = record.tenancies?.tenants;
+                  const paid = paidAmount(record);
+                  const balance = Math.max(
+                    Number(record.amount_due || 0) - paid,
+                    0,
+                  );
+                  const tenant = record.tenancies?.tenants;
 
-                return (
-                  <tr key={record.id}>
-                    <td>
-                      <strong>
-                        {tenant?.first_name || "—"} {tenant?.last_name || ""}
-                      </strong>
-                    </td>
+                  return (
+                    <tr key={record.id}>
+                      <td>
+                        <strong>
+                          {tenant?.first_name || "—"} {tenant?.last_name || ""}
+                        </strong>
+                      </td>
 
-                    <td>{record.tenancies?.units?.unit_number || "—"}</td>
-                    <td>{record.due_date}</td>
-                    <td>{money(record.amount_due)}</td>
-                    <td>{money(paid)}</td>
+                      <td>{record.tenancies?.units?.unit_number || "—"}</td>
+                      <td>{record.due_date}</td>
+                      <td>{money(record.amount_due)}</td>
+                      <td>{money(paid)}</td>
 
-                    <td>
-                      <strong>{money(balance)}</strong>
-                    </td>
+                      <td>
+                        <strong>{money(balance)}</strong>
+                      </td>
 
-                    <td>
-                      <StatusBadge status={statusLabel(record)} />
-                    </td>
-
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "row",
-                          gap: 6,
-                          alignItems: "center",
-                        }}
-                      >
-                        <button
-                          className="small-btn"
-                          disabled={balance <= 0}
-                          onClick={() => openPay(record)}
-                          title="Record rent payment"
-                          aria-label="Record rent payment"
+                      <td>
+                        <span
+                          className={`badge payment-status-badge ${statusBadgeClass(
+                            statusLabel(record),
+                          )}`}
                         >
-                          <Plus size={14} />
-                        </button>
+                          {statusLabel(record)}
+                        </span>
+                      </td>
 
-                        {(record.payments || []).map((payment) => (
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            gap: 6,
+                            alignItems: "center",
+                          }}
+                        >
                           <button
-                            key={payment.id}
-                            className="small-btn secondary"
-                            onClick={() => openEditPayment(record, payment)}
-                            title={`Edit payment of ${money(payment.amount)}`}
-                            aria-label={`Edit payment of ${money(payment.amount)}`}
+                            className="small-btn"
+                            disabled={balance <= 0}
+                            onClick={() => openPay(record)}
+                            title="Record rent payment"
+                            aria-label="Record rent payment"
                           >
-                            <Pencil size={14} />
+                            <Plus size={14} />
                           </button>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                );
+
+                          {(record.payments || []).map((payment) => (
+                            <button
+                              key={payment.id}
+                              className="small-btn secondary"
+                              onClick={() => openEditPayment(record, payment)}
+                              title={`Edit payment of ${money(payment.amount)}`}
+                              aria-label={`Edit payment of ${money(payment.amount)}`}
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
                 })}
             </tbody>
           </table>
@@ -462,7 +562,7 @@ export default function Payments() {
               <tr>
                 <th>Tenant</th>
                 <th>Unit</th>
-                <th>Payment Type</th>
+                <th>Type</th>
                 <th>Amount</th>
                 <th>Paid</th>
                 <th>Balance</th>
@@ -493,12 +593,30 @@ export default function Payments() {
                         </strong>
                       </td>
                       <td>{payment.tenancies?.units?.unit_number || "—"}</td>
-                      <td>{paymentType}</td>
+                      <td>
+                        <span
+                          className={`payment-type-badge ${paymentTypeBadgeClass(
+                            payment.payment_type,
+                          )}`}
+                        >
+                          {paymentType}
+                        </span>
+                      </td>
                       <td>{money(payment.amount)}</td>
                       <td>{money(payment.amount)}</td>
-                      <td><strong>{money(0)}</strong></td>
+                      <td>
+                        <strong>{money(0)}</strong>
+                      </td>
                       <td>{payment.payment_date || "—"}</td>
-                      <td>{payment.payment_method || "—"}</td>
+                      <td>
+                        <span
+                          className={`payment-method-badge ${paymentMethodBadgeClass(
+                            payment.payment_method,
+                          )}`}
+                        >
+                          {payment.payment_method || "—"}
+                        </span>
+                      </td>
                       <td>{payment.notes || "—"}</td>
                       <td>
                         <button
@@ -538,7 +656,7 @@ export default function Payments() {
         <form onSubmit={save} className="form-grid">
           {(!editingPayment || editingPayment.payment_type !== "rent") && (
             <label className="full-span">
-              Payment type
+              Type
               <select
                 value={form.payment_type}
                 onChange={(event) => {

@@ -29,35 +29,43 @@ export default function Receipts() {
   const filteredPayments = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) return paymentList;
+    const results = !query
+      ? [...paymentList]
+      : paymentList.filter((payment) => {
+          const tenantName = `${payment.tenants?.first_name || ""} ${
+            payment.tenants?.last_name || ""
+          }`.trim();
 
-    return paymentList.filter((payment) => {
-      const tenantName = `${payment.tenants?.first_name || ""} ${
-        payment.tenants?.last_name || ""
-      }`.trim();
+          const unitNumber = payment.tenancies?.units?.unit_number || "";
 
-      const unitNumber = payment.tenancies?.units?.unit_number || "";
+          const receiptNumber = getReceiptNumber(payment, paymentList);
 
-      const receiptNumber = getReceiptNumber(payment, paymentList);
+          const paymentType =
+            payment.payment_type || payment.type || "Monthly Rent";
 
-      const paymentType =
-        payment.payment_type || payment.type || "Monthly Rent";
+          const searchable = [
+            receiptNumber,
+            tenantName,
+            unitNumber,
+            payment.payment_method,
+            paymentType,
+            payment.notes,
+            payment.amount,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
 
-      const searchable = [
-        receiptNumber,
-        tenantName,
-        unitNumber,
-        payment.payment_method,
-        paymentType,
-        payment.notes,
-        payment.amount,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+          return searchable.includes(query);
+        });
 
-      return searchable.includes(query);
-    });
+    /*
+     * Receipt order:
+     * 1. Group by YYYY-MM, newest month first.
+     * 2. Within each month, month-only records (YYYY-MM) first.
+     * 3. Then full dates (YYYY-MM-DD), newest day first.
+     */
+    return results.sort(compareReceiptListDates);
   }, [paymentList, search]);
 
   const openGenerateModal = (paymentId = "") => {
@@ -87,7 +95,6 @@ export default function Receipts() {
 
   return (
     <div className="receipts-page">
-      
       {/* PAGE HEADER */}
 
       <div className="page-head receipts-page-head">
@@ -214,14 +221,24 @@ export default function Receipts() {
 
                       {/* Method */}
                       <td>
-                        <span className="receipt-method">
+                        <span
+                          className={`receipt-method ${getReceiptPaymentMethodClass(
+                            payment.payment_method,
+                          )}`}
+                        >
                           {formatPaymentMethod(payment.payment_method)}
                         </span>
                       </td>
 
                       {/* Type */}
                       <td>
-                        <span className="receipt-type">{paymentType}</span>
+                        <span
+                          className={`receipt-type ${getReceiptPaymentTypeClass(
+                            payment.payment_type || payment.type,
+                          )}`}
+                        >
+                          {paymentType}
+                        </span>
                       </td>
 
                       {/* Actions */}
@@ -250,149 +267,152 @@ export default function Receipts() {
       {/* GENERATE RECEIPT MODAL                                           */}
       {/* ---------------------------------------------------------------- */}
 
-      {modalOpen && createPortal(
-        <div
-          className="modal-backdrop receipts-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeModal();
-            }
-          }}
-        >
-          <div className="modal receipts-modal">
-            <div className="modal-head">
-              <div>
-                <h2>Generate receipt</h2>
-                <p className="receipts-modal-subtitle">
-                  Select a recorded payment to generate receipt.
-                </p>
+      {modalOpen &&
+        createPortal(
+          <div
+            className="modal-backdrop receipts-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                closeModal();
+              }
+            }}
+          >
+            <div className="modal receipts-modal">
+              <div className="modal-head">
+                <div>
+                  <h2>Generate receipt</h2>
+                  <p className="receipts-modal-subtitle">
+                    Select a recorded payment to generate receipt.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={closeModal}
+                  aria-label="Close"
+                >
+                  <CloseIcon />
+                </button>
               </div>
 
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={closeModal}
-                aria-label="Close"
-              >
-                <CloseIcon />
-              </button>
-            </div>
+              <div className="modal-body">
+                <div className="receipts-modal-form">
+                  <label>
+                    Select payment
+                    <select
+                      value={selected}
+                      onChange={(event) => setSelected(event.target.value)}
+                    >
+                      <option value="">Choose a payment...</option>
 
-            <div className="modal-body">
-              <div className="receipts-modal-form">
-                <label>
-                  Select payment
-                  <select
-                    value={selected}
-                    onChange={(event) => setSelected(event.target.value)}
-                  >
-                    <option value="">Choose a payment...</option>
+                      {paymentList.map((payment) => {
+                        const tenantName =
+                          `${payment.tenants?.first_name || ""} ${
+                            payment.tenants?.last_name || ""
+                          }`.trim();
 
-                    {paymentList.map((payment) => {
-                      const tenantName =
-                        `${payment.tenants?.first_name || ""} ${
-                          payment.tenants?.last_name || ""
-                        }`.trim();
+                        return (
+                          <option key={payment.id} value={payment.id}>
+                            {receiptDateLabel(payment)} —{" "}
+                            {tenantName || "Tenant"} —{" "}
+                            {formatMoney(payment.amount)}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </label>
 
-                      return (
-                        <option key={payment.id} value={payment.id}>
-                          {receiptDateLabel(payment)} —{" "}
-                          {tenantName || "Tenant"} —{" "}
-                          {formatMoney(payment.amount)}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
+                  {selectedPayment && (
+                    <div className="receipt-preview-card">
+                      <div className="receipt-preview-header">
+                        <div className="receipt-preview-icon">
+                          <ReceiptIcon />
+                        </div>
 
-                {selectedPayment && (
-                  <div className="receipt-preview-card">
-                    <div className="receipt-preview-header">
-                      <div className="receipt-preview-icon">
-                        <ReceiptIcon />
+                        <div>
+                          <span>Receipt</span>
+                          <strong>
+                            {getReceiptNumber(selectedPayment, paymentList)}
+                          </strong>
+                        </div>
                       </div>
 
-                      <div>
-                        <span>Receipt</span>
-                        <strong>
-                          {getReceiptNumber(selectedPayment, paymentList)}
-                        </strong>
-                      </div>
-                    </div>
+                      <div className="receipt-preview-grid">
+                        <div>
+                          <span>Tenant</span>
+                          <strong>
+                            {`${selectedPayment.tenants?.first_name || ""} ${
+                              selectedPayment.tenants?.last_name || ""
+                            }`.trim() || "—"}
+                          </strong>
+                        </div>
 
-                    <div className="receipt-preview-grid">
-                      <div>
-                        <span>Tenant</span>
-                        <strong>
-                          {`${selectedPayment.tenants?.first_name || ""} ${
-                            selectedPayment.tenants?.last_name || ""
-                          }`.trim() || "—"}
-                        </strong>
-                      </div>
+                        <div>
+                          <span>Unit</span>
+                          <strong>
+                            {selectedPayment.tenancies?.units?.unit_number ||
+                              "—"}
+                          </strong>
+                        </div>
 
-                      <div>
-                        <span>Unit</span>
-                        <strong>
-                          {selectedPayment.tenancies?.units?.unit_number || "—"}
-                        </strong>
-                      </div>
+                        <div>
+                          <span>Date</span>
+                          <strong>{receiptDateLabel(selectedPayment)}</strong>
+                        </div>
 
-                      <div>
-                        <span>Date</span>
-                        <strong>
-                          {receiptDateLabel(selectedPayment)}
-                        </strong>
-                      </div>
+                        <div>
+                          <span>Amount</span>
+                          <strong>{formatMoney(selectedPayment.amount)}</strong>
+                        </div>
 
-                      <div>
-                        <span>Amount</span>
-                        <strong>{formatMoney(selectedPayment.amount)}</strong>
-                      </div>
+                        <div>
+                          <span>Method</span>
+                          <strong>
+                            {formatPaymentMethod(
+                              selectedPayment.payment_method,
+                            )}
+                          </strong>
+                        </div>
 
-                      <div>
-                        <span>Method</span>
-                        <strong>
-                          {formatPaymentMethod(selectedPayment.payment_method)}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>Type</span>
-                        <strong>
-                          {formatPaymentType(
-                            selectedPayment.payment_type || selectedPayment.type,
-                          )}
-                        </strong>
+                        <div>
+                          <span>Type</span>
+                          <strong>
+                            {formatPaymentType(
+                              selectedPayment.payment_type ||
+                                selectedPayment.type,
+                            )}
+                          </strong>
+                        </div>
                       </div>
                     </div>
+                  )}
+
+                  <div className="form-actions receipts-modal-actions">
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={closeModal}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={!selectedPayment}
+                      onClick={handleGenerate}
+                    >
+                      <PdfIcon />
+                      Generate
+                    </button>
                   </div>
-                )}
-
-                <div className="form-actions receipts-modal-actions">
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={closeModal}
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="button"
-                    className="primary"
-                    disabled={!selectedPayment}
-                    onClick={handleGenerate}
-                  >
-                    <PdfIcon />
-                    Generate
-                  </button>
                 </div>
               </div>
             </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -673,10 +693,9 @@ function receiptDateLabel(payment) {
   const billingMonth = String(payment?.billing_records?.billing_month || "");
 
   if (/^\d{4}-\d{2}/.test(billingMonth)) {
-    return new Date(`${billingMonth.slice(0, 7)}-01T00:00:00`).toLocaleDateString(
-      "en-US",
-      { month: "long", year: "numeric" },
-    );
+    return new Date(
+      `${billingMonth.slice(0, 7)}-01T00:00:00`,
+    ).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   }
 
   return "Date not recorded";
@@ -697,6 +716,55 @@ function getPaymentGroupKey(payment) {
   const unitNumber = payment?.tenancies?.units?.unit_number || "";
 
   return `tenant:${tenantId}|unit:${unitNumber}`;
+}
+
+function compareReceiptListDates(first, second) {
+  const firstDate = getReceiptListDate(first);
+  const secondDate = getReceiptListDate(second);
+
+  // Group everything by YYYY-MM first.
+  // Newest month appears first.
+  const firstMonth = firstDate.slice(0, 7);
+  const secondMonth = secondDate.slice(0, 7);
+
+  if (firstMonth !== secondMonth) {
+    return secondMonth.localeCompare(firstMonth);
+  }
+
+  // Within the same month:
+  // - A record with YYYY-MM only goes at the TOP of that month.
+  // - Records with YYYY-MM-DD follow, newest day first.
+  const firstHasDay = /^\d{4}-\d{2}-\d{2}$/.test(firstDate);
+  const secondHasDay = /^\d{4}-\d{2}-\d{2}$/.test(secondDate);
+
+  if (firstHasDay !== secondHasDay) {
+    return firstHasDay ? 1 : -1;
+  }
+
+  // Both have a day: newest YYYY-MM-DD first.
+  return secondDate.localeCompare(firstDate);
+}
+
+function getReceiptListDate(payment) {
+  const paymentDate = String(payment?.payment_date || "").trim();
+
+  // A real payment date has priority.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) {
+    return paymentDate;
+  }
+
+  // If there is no payment day, use the billing month.
+  // billing_month is stored as a DATE such as 2026-07-01,
+  // but for sorting we only need YYYY-MM.
+  const billingMonth = String(
+    payment?.billing_records?.billing_month || "",
+  ).trim();
+
+  if (/^\d{4}-\d{2}/.test(billingMonth)) {
+    return billingMonth.slice(0, 7);
+  }
+
+  return "";
 }
 
 function comparePayments(first, second) {
@@ -778,6 +846,35 @@ function formatPaymentType(value) {
   if (!type) return "Rent";
 
   return type.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getReceiptPaymentMethodClass(value) {
+  const method = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (method === "g-cash" || method === "gcash") return "gcash";
+
+  if (
+    ["bank transfer", "bank_transfer", "maribank", "maya", "other"].includes(
+      method,
+    )
+  ) {
+    return "maribank";
+  }
+
+  return "cash";
+}
+
+function getReceiptPaymentTypeClass(value) {
+  const type = String(value || "rent")
+    .replace(/_/g, " ")
+    .trim()
+    .toLowerCase();
+
+  if (type === "deposit") return "deposit";
+  if (type === "advance") return "advance";
+  return "rent";
 }
 
 function normalizePaymentMethod(value) {

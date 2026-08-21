@@ -50,3 +50,60 @@
   border: 1px solid var(--rk-border-soft);
   color: #61736b;
 }
+
+.payment-type-badge,
+.payment-method-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 20px;
+  padding: 4px 8px;
+
+  border-radius: 999px;
+
+  font-size: 9px;
+  font-weight: 750;
+
+  white-space: nowrap;
+}
+
+.payment-type-badge.rent {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.payment-type-badge.deposit {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.payment-type-badge.advance {
+  background: #fff1df;
+  color: #b76500;
+}
+
+.payment-type-badge.other {
+  background: #eef3ef;
+  color: #46675a;
+}
+
+.payment-method-badge.cash {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.payment-method-badge.gcash {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.payment-method-badge.maribank {
+  background: #fff1df;
+  color: #b76500;
+}
+
+.payment-method-badge.other {
+  background: #eef3ef;
+  color: #66766f;
+}

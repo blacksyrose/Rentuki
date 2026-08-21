@@ -207,21 +207,57 @@
 }
 
 .receipt-method {
-  color: #526158;
-  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.receipt-method.cash {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.receipt-method.gcash {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.receipt-method.maribank {
+  background: #fff1df;
+  color: #b76500;
 }
 
 .receipt-type {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 20px;
-  padding: 4px 7px;
+  padding: 4px 8px;
   border-radius: 999px;
-  background: #eef3f1;
-  color: #52645b;
   font-size: 8px;
-  font-weight: 700;
+  font-weight: 750;
   white-space: nowrap;
+}
+
+.receipt-type.rent {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.receipt-type.deposit {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.receipt-type.advance {
+  background: #fff1df;
+  color: #b76500;
 }
 
 .receipt-row-actions {
@@ -399,7 +435,6 @@
 }
 
 @media (max-width: 800px) {
-
   .receipts-page-head {
     align-items: flex-start;
   }
@@ -420,11 +455,9 @@
   .receipts-modal {
     width: min(100%, 520px);
   }
-
 }
 
 @media (max-width: 600px) {
-
   .receipts-page-head {
     flex-direction: column;
     gap: 12px;
@@ -449,15 +482,12 @@
   .receipts-modal-actions button {
     width: 100%;
   }
-
 }
 
 @media (max-width: 400px) {
-
   .receipt-preview-grid {
     grid-template-columns: 1fr;
   }
-
 }
 
 .receipts-page {
@@ -667,21 +697,57 @@
 }
 
 .receipt-method {
-  color: #526158;
-  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.receipt-method.cash {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.receipt-method.gcash {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.receipt-method.maribank {
+  background: #fff1df;
+  color: #b76500;
 }
 
 .receipt-type {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 20px;
-  padding: 4px 7px;
+  padding: 4px 8px;
   border-radius: 999px;
-  background: #eef3f1;
-  color: #52645b;
   font-size: 8px;
-  font-weight: 700;
+  font-weight: 750;
   white-space: nowrap;
+}
+
+.receipt-type.rent {
+  background: #e8f7ef;
+  color: #18764b;
+}
+
+.receipt-type.deposit {
+  background: #eaf3ff;
+  color: #2768b5;
+}
+
+.receipt-type.advance {
+  background: #fff1df;
+  color: #b76500;
 }
 
 .receipt-row-actions {
@@ -859,7 +925,6 @@
 }
 
 @media (max-width: 800px) {
-
   .receipts-page-head {
     align-items: flex-start;
   }
@@ -880,11 +945,9 @@
   .receipts-modal {
     width: min(100%, 520px);
   }
-
 }
 
 @media (max-width: 600px) {
-
   .receipts-page-head {
     flex-direction: column;
     gap: 12px;
@@ -909,13 +972,10 @@
   .receipts-modal-actions button {
     width: 100%;
   }
-
 }
 
 @media (max-width: 400px) {
-
   .receipt-preview-grid {
     grid-template-columns: 1fr;
   }
-
 }
