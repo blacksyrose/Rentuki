@@ -790,6 +790,16 @@ export async function generateBillingForActiveTenancies(
       return false;
     }
 
+    // Do not generate regular billing for a tenant
+    // who moved out during the selected billing month.
+    const moveOutMonth = tenancy.end_date
+      ? String(tenancy.end_date).slice(0, 7)
+      : null;
+
+    if (moveOutMonth === billingMonth) {
+      return false;
+    }
+
     // The tenancy must overlap the selected billing month.
     const startsBeforeMonthEnds = tenancy.start_date <= monthEnd;
 
