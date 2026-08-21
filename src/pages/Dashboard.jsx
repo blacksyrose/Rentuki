@@ -54,18 +54,12 @@ function getTenantName(tenant) {
   );
 }
 
-function getLastSixMonths(monthValue) {
-  const [year, month] = String(monthValue || currentMonth())
-    .split("-")
-    .map(Number);
+function getAllMonthsOfYear(monthValue = currentMonth()) {
+  const year =
+    Number(String(monthValue).slice(0, 4)) || new Date().getFullYear();
 
-  const date = new Date(year, (month || 1) - 1, 1);
-
-  return Array.from({ length: 6 }, (_, index) => {
-    const value = new Date(date);
-    value.setMonth(date.getMonth() - (5 - index));
-
-    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
+  return Array.from({ length: 12 }, (_, index) => {
+    return `${year}-${String(index + 1).padStart(2, "0")}`;
   });
 }
 
@@ -74,6 +68,18 @@ function monthShortLabel(monthValue) {
 
   return date.toLocaleDateString("en-US", {
     month: "short",
+  });
+}
+
+function monthChartLabel(monthValue, allMonths = []) {
+  const date = new Date(`${monthValue}-01T00:00:00`);
+  const hasMultipleYears =
+    new Set((allMonths || []).map((value) => String(value).slice(0, 4))).size >
+    1;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    ...(hasMultipleYears ? { year: "2-digit" } : {}),
   });
 }
 
@@ -113,15 +119,15 @@ export default function Dashboard() {
   const expenses = useAsync(() => db.expenses.list(), []);
 
   const historicalBilling = useAsync(async () => {
-    const months = getLastSixMonths(currentMonth());
+    // Load every billing record, then build all 12 months of the current year.
+    const records = await db.billing.listAll();
+    const months = getAllMonthsOfYear(currentMonth());
 
-    const records = await Promise.all(
-      months.map((month) => db.billing.list(month)),
-    );
-
-    return months.map((month, index) => ({
+    return months.map((month) => ({
       month,
-      records: records[index] || [],
+      records: (records || []).filter(
+        (record) => String(record?.billing_month || "").slice(0, 7) === month,
+      ),
     }));
   }, []);
 
@@ -253,7 +259,7 @@ export default function Dashboard() {
   /* RENT COLLECTION GRAPH */
 
   const rentCollection = useMemo(() => {
-    const months = getLastSixMonths(currentMonth());
+    const months = (historicalBilling.data || []).map((item) => item.month);
 
     return months.map((month) => {
       const monthData = (historicalBilling.data || []).find(
@@ -430,8 +436,8 @@ export default function Dashboard() {
         <section className="panel dashboard-chart-card rent-chart-card">
           <div className="panel-head">
             <div>
-              <h2>Rent collection</h2>
-              <p>Expected vs collected over the last six months</p>
+              <h2>Rent Collection</h2>
+              <p>Expected vs collected across all months of the year</p>
             </div>
 
             <div className="chart-month">{monthLongLabel(currentMonth())}</div>
@@ -460,7 +466,7 @@ export default function Dashboard() {
                 className="rent-svg rent-svg-reference"
                 viewBox="0 0 720 270"
                 preserveAspectRatio="none"
-                aria-label="Rent collection over the last six months"
+                aria-label="Rent collection across all months of the year"
               >
                 <path
                   d={smoothLinePath(rentChartPoints.expected)}
@@ -554,7 +560,12 @@ export default function Dashboard() {
 
               <div className="rent-chart-x">
                 {rentCollection.map((item) => (
-                  <span key={item.month}>{item.label}</span>
+                  <span key={item.month}>
+                    {monthChartLabel(
+                      item.month,
+                      rentCollection.map((entry) => entry.month),
+                    )}
+                  </span>
                 ))}
               </div>
             </div>
@@ -663,7 +674,7 @@ export default function Dashboard() {
         <section className="panel dashboard-chart-card expense-card">
           <div className="panel-head">
             <div>
-              <h2>Expense breakdown</h2>
+              <h2>Expense Breakdown</h2>
               <p>{currentMonth()} operating costs</p>
             </div>
 
@@ -746,7 +757,7 @@ export default function Dashboard() {
         <section className="panel dashboard-list-card">
           <div className="panel-head">
             <div>
-              <h2>Recent payments</h2>
+              <h2>Recent Payments</h2>
               <p>Latest recorded transactions</p>
             </div>
 
@@ -817,7 +828,7 @@ export default function Dashboard() {
         <section className="panel dashboard-list-card">
           <div className="panel-head">
             <div>
-              <h2>Recent maintenance</h2>
+              <h2>Recent Maintenance</h2>
               <p>Open and recently resolved requests</p>
             </div>
 
