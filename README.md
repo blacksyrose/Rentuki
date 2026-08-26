@@ -1,10 +1,17 @@
 # Rentuki — Rental Management System
 
-A web-based rental management system built with **React, Vite, and Supabase** to help manage tenants, units, rental payments, maintenance expenses, reports, and tenant portal access.
+A web-based rental management system built with **React, Vite, and Supabase** to help manage tenants, rental units, payments, maintenance expenses, reports, and tenant portal access.
 
 ## 🌐 Live Demo
 
-**[View Rentuki Live Demo](working...)**
+🚀 **[View Rentuki Live Demo](https://rentuki-live-demo.vercel.app)**
+
+**Demo Account**
+
+```text
+Email: demo@rentuki.com
+Password: !Demo123
+```
 
 ---
 
@@ -14,7 +21,7 @@ Rentuki is a rental management application designed to centralize common rental 
 
 The application provides tools for managing tenants and units, recording rental payments, tracking maintenance and expenses, generating monthly summaries and reports, managing receipts, and providing tenants with read-only portal access.
 
-The project was developed as a practical full-stack web application to strengthen my experience with **React, database integration, application logic, testing, and troubleshooting**.
+The project was developed as a practical full-stack web application to strengthen my experience with **React, database integration, application logic, testing, troubleshooting, technical problem-solving.**.
 
 ---
 
@@ -32,6 +39,7 @@ The project was developed as a practical full-stack web application to strengthe
 ### Unit Management
 - Manage rental units
 - Organize units by unit number
+- Track unit availability
 
 ### Payments
 - Record monthly rent payments
@@ -84,6 +92,22 @@ The project was developed as a practical full-stack web application to strengthe
 
 ---
 
+## 💡 Core Skills Demonstrated
+
+- React.js application development
+- Supabase/PostgreSQL database integration
+- CRUD operations
+- Authentication and authorization
+- Application and business logic
+- Form handling and validation
+- Data management
+- Troubleshooting and debugging
+- Software testing
+- Responsive UI development
+- Technical documentation
+
+---
+
 ## 🏗️ Project Structure
 
 ```text
@@ -108,7 +132,7 @@ Rentuki uses Supabase for its backend and database integration.
 Some of the application's important business rules include:
 
 - Move-in date and payment due day are stored separately.
-- ```tenancies.payment_due_day``` controls the recurring rent due date.
+- `tenancies.payment_due_day` controls the recurring rent due date.
 - Rent is stored on each tenancy to preserve historical rental rates.
 - Monthly rent payments use billing records.
 - Advance rent and security deposits are stored as separate payment records.
@@ -121,13 +145,12 @@ Some of the application's important business rules include:
 
 ## 📸 Screenshots
 
-Dashboard
+View screenshots of the application:
 
-Tenant Management
-
-Payments
-
-Monthly Summary
+- [📊 Dashboard](screenshots/dashboard.png)
+- [👥 Tenant Management](screenshots/tenants.png)
+- [💳 Payments](screenshots/payments.png)
+- [📈 Monthly Summary](screenshots/summary.png)
 
 ---
 
@@ -146,7 +169,7 @@ cd Rentuki
 
 **2. Configure environment variables**
 
-Copy ```.env.example``` to ```.env```:
+Copy `.env.example` to `.env`:
 ```
 cp .env.example .env
 ```
@@ -189,27 +212,24 @@ For production deployment, configure:
 VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
 ```
-as environment variables in the hosting platform.
 
 ---
 
 ## 🧪 Testing & Validation
 
 The application was smoke-tested against the existing Supabase project.
-
-Before deployment, verify the major application workflows, including:
 - Dashboard
-- Tenants
-- Units
-- Payments
+- Tenant Management
+- Unit Management
+- Payment Recording
 - Maintenance & Expenses
-- Monthly Summary
+- Monthly Summaries
 - Receipts
 - Submeter Calculator
 - Settings
 - Tenant Portal
 
-Production data should be backed up before performing cleanup or removing test records.
+Testing included functionality verification, troubleshooting, and database-related validation.
 
 ---
 
@@ -218,7 +238,7 @@ Production data should be backed up before performing cleanup or removing test r
 - Supabase credentials are stored using environment variables.
 - The Supabase service-role key must never be exposed in frontend environment variables.
 - Production credentials should not be committed to the repository.
-- ```.env``` should remain excluded from version control.
+- `.env` should remain excluded from version control.
 
 ---
 
@@ -245,9 +265,3 @@ Quezon City, Philippines
 ---
 
 ⭐ If you find the project interesting, feel free to explore the source code and live demo.
-
-
-
-
-
-
