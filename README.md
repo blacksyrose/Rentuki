@@ -89,11 +89,11 @@ The project was developed as a practical full-stack web application to strengthe
 ```text
 src/
 ├── components/        # Shared UI components
+├── lib/
+│   └── supabase.js    # Supabase client
 ├── pages/             # Application pages
 ├── services/
 │   └── db.js          # Supabase data access layer
-├── lib/
-│   └── supabase.js    # Supabase client
 ├── styles/
 │   └── *.css          # Page-specific styles
 └── styles.css         # Shared/global styles
@@ -139,5 +139,115 @@ Monthly Summary
 - Existing Supabase project with the required Rentuki database schema and RPCs
 
 **1. Clone the repository**
-```git clone YOUR_REPOSITORY_URL 
-cd Rentuki```
+```
+git clone YOUR_REPOSITORY_URL 
+cd Rentuki
+```
+
+**2. Configure environment variables**
+
+Copy ```.env.example``` to ```.env```:
+```
+cp .env.example .env
+```
+Add your Supabase credentials:
+```
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+```
+
+**3. Install dependencies**
+```
+npm install
+```
+
+**4. Start the development server**
+```
+npm run dev
+```
+
+---
+
+## 📦 Production Build
+
+Create a production build:
+```
+npm run build
+```
+Preview the production build locally:
+```
+npm run preview
+```
+The generated production files are placed in:
+```
+dist/
+```
+The application can be deployed to services such as Vercel, Netlify, or Cloudflare Pages.
+
+For production deployment, configure:
+```
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+```
+as environment variables in the hosting platform.
+
+---
+
+## 🧪 Testing & Validation
+
+The application was smoke-tested against the existing Supabase project.
+
+Before deployment, verify the major application workflows, including:
+- Dashboard
+- Tenants
+- Units
+- Payments
+- Maintenance & Expenses
+- Monthly Summary
+- Receipts
+- Submeter Calculator
+- Settings
+- Tenant Portal
+
+Production data should be backed up before performing cleanup or removing test records.
+
+---
+
+## 🔒 Security
+
+- Supabase credentials are stored using environment variables.
+- The Supabase service-role key must never be exposed in frontend environment variables.
+- Production credentials should not be committed to the repository.
+- ```.env``` should remain excluded from version control.
+
+---
+
+## 🔮 Future Improvements
+
+Potential future improvements include:
+
+- Additional reporting features
+- Improved tenant communication features
+- Enhanced authentication and authorization
+- Additional rental management workflows
+- Further UI/UX improvements
+
+## 👩‍💻 Developer
+
+**Erika B. Ferolino**
+
+BSIT Graduate
+
+Quezon City, Philippines
+
+[Portfolio](working...)
+
+---
+
+⭐ If you find the project interesting, feel free to explore the source code and live demo.
+
+
+
+
+
+
