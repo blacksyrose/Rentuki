@@ -151,6 +151,7 @@ View screenshots of the application:
 - [👥 Tenant Management](screenshots/tenants.png)
 - [💳 Payments](screenshots/payments.png)
 - [📈 Monthly Summary](screenshots/summary.png)
+- [👤 Tenant Portal](screenshots/portal.png)
 
 ---
 
