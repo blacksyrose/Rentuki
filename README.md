@@ -4,7 +4,7 @@ A web-based rental management system built with **React, Vite, and Supabase** to
 
 ## 🌐 Live Demo
 
-**[View Rentuki Live Demo](YOUR_LIVE_DEMO_URL)**
+**[View Rentuki Live Demo](working...)**
 
 ---
 
@@ -97,3 +97,47 @@ src/
 ├── styles/
 │   └── *.css          # Page-specific styles
 └── styles.css         # Shared/global styles
+```
+
+---
+
+## 🔐 Database & Application Logic
+
+Rentuki uses Supabase for its backend and database integration.
+
+Some of the application's important business rules include:
+
+- Move-in date and payment due day are stored separately.
+- ```tenancies.payment_due_day``` controls the recurring rent due date.
+- Rent is stored on each tenancy to preserve historical rental rates.
+- Monthly rent payments use billing records.
+- Advance rent and security deposits are stored as separate payment records.
+- Tenant transfers end the previous tenancy and create a new tenancy.
+- Historical billing, payment, and receipt records are retained.
+- Tenant portal access is private and read-only.
+- Monthly summaries separate rent from advance rent and security deposits.
+
+---
+
+## 📸 Screenshots
+
+Dashboard
+
+Tenant Management
+
+Payments
+
+Monthly Summary
+
+---
+
+## 🚀 Getting Started
+
+**Requirements**
+- Node.js 20+
+- npm
+- Existing Supabase project with the required Rentuki database schema and RPCs
+
+**1. Clone the repository**
+```git clone YOUR_REPOSITORY_URL 
+cd Rentuki```
