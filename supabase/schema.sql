@@ -1649,6 +1649,7 @@ BEGIN
         'tenancy_id', pay.tenancy_id,
         'tenant_id', pay.tenant_id,
         'unit_number', u.unit_number,
+        'monthly_rent', te.monthly_rent,
         'created_at', pay.created_at
       )
       ORDER BY pay.payment_date DESC, pay.created_at DESC
@@ -6834,4 +6835,3 @@ CREATE EVENT TRIGGER pgrst_drop_watch ON sql_drop
 --
 
 \unrestrict YdcD1m1s1dGbFe9YQoO70vhkpNaZghSG6D4vKOYEABkXWejVpVPkoefdf0Mo8Hc
-

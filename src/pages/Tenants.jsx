@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Plus,
@@ -6,6 +6,7 @@ import {
   ArrowRightLeft,
   Pencil,
   LogOut,
+  RotateCcw,
   Users,
 } from "lucide-react";
 import Modal from "../components/Modal";
@@ -15,6 +16,8 @@ import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
 import { compareUnitNumbers, money, dateLabel } from "../lib/utils";
 import { useToast } from "../components/Toast";
+import { useSearchParams } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 
 export default function Tenants() {
   const { data, loading, refresh } = useAsync(() => db.tenants.list(), []);
@@ -30,6 +33,7 @@ export default function Tenants() {
   const [historical, setHistorical] = useState(false);
 
   const [open, setOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -44,6 +48,8 @@ export default function Tenants() {
 
   const [moveOutOpen, setMoveOutOpen] = useState(false);
   const [movingOutTenancy, setMovingOutTenancy] = useState(null);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restoringTenancy, setRestoringTenancy] = useState(null);
 
   const [editTenantForm, setEditTenantForm] = useState({
     first_name: "",
@@ -60,6 +66,13 @@ export default function Tenants() {
   });
 
   const toast = useToast();
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "tenant") return;
+
+    setOpen(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const [form, setForm] = useState({
     first_name: "",
@@ -461,6 +474,93 @@ export default function Tenants() {
   };
 
   // ------------------------------------------------------------
+  // Restore a moved-out tenant
+  // ------------------------------------------------------------
+
+  const openRestore = (tenancy) => {
+    if (!tenancy || !selectedTenant) return;
+
+    setRestoringTenancy(tenancy);
+    setRestoreOpen(true);
+  };
+
+  const restoreMoveOut = async () => {
+    if (!selectedTenant || !restoringTenancy) return;
+
+    try {
+      const unitId = restoringTenancy.unit_id;
+
+      if (!unitId) {
+        throw new Error("This tenancy has no unit assigned, so it cannot be restored.");
+      }
+
+      // Do not restore into a unit that has already been occupied by another tenant.
+      const { data: unit, error: unitError } = await supabase
+        .from("units")
+        .select("id, status, unit_number")
+        .eq("id", unitId)
+        .single();
+
+      if (unitError) throw unitError;
+
+      if (unit.status !== "available") {
+        throw new Error(
+          `Unit ${unit.unit_number || ""} is no longer available. The move-out cannot be reverted safely.`,
+        );
+      }
+
+      // A tenant can only have one active tenancy.
+      const existingActive = (selectedTenant.tenancies || []).find(
+        (tenancy) => tenancy.status === "active",
+      );
+
+      if (existingActive && existingActive.id !== restoringTenancy.id) {
+        throw new Error(
+          "This tenant already has an active tenancy. End that tenancy first before restoring this one.",
+        );
+      }
+
+      const { error: tenancyError } = await supabase
+        .from("tenancies")
+        .update({
+          status: "active",
+          end_date: null,
+        })
+        .eq("id", restoringTenancy.id)
+        .eq("tenant_id", selectedTenant.id);
+
+      if (tenancyError) throw tenancyError;
+
+      const { error: unitUpdateError } = await supabase
+        .from("units")
+        .update({ status: "occupied" })
+        .eq("id", unitId);
+
+      if (unitUpdateError) throw unitUpdateError;
+
+      const { error: tenantError } = await supabase
+        .from("tenants")
+        .update({ status: "active" })
+        .eq("id", selectedTenant.id);
+
+      if (tenantError) throw tenantError;
+
+      const tenantId = selectedTenant.id;
+
+      setRestoreOpen(false);
+      setRestoringTenancy(null);
+
+      await refresh();
+      await refreshUnits();
+      await refreshSelectedTenant(tenantId);
+
+      toast.success("Move-out reverted. Tenant is active again.");
+    } catch (e) {
+      toast.error(e?.message || "Unable to restore the tenancy.");
+    }
+  };
+
+  // ------------------------------------------------------------
   // Open transfer modal
   // ------------------------------------------------------------
 
@@ -569,18 +669,10 @@ export default function Tenants() {
         <div>
           <h1>Tenant Directory</h1>
           <p>
-            Database of tenant contact info, active leases, and rental
-            histories.
+            Track and manage tenant directory [Personal informations and rental history]
           </p>
         </div>
 
-        <button
-          className="primary tenant-add-button"
-          onClick={() => setOpen(true)}
-        >
-          <Plus size={15} />
-          Add Tenant
-        </button>
       </div>
 
       <div className="tenant-directory-toolbar">
@@ -650,7 +742,7 @@ export default function Tenants() {
                                 .join(" ")}
                             </strong>
                             <small>
-                              {t.phone || t.email || "No contact number"}
+                              {t.phone || t.email || "-"}
                             </small>
                           </span>
                         </div>
@@ -883,79 +975,136 @@ export default function Tenants() {
       <Modal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
-        title={
-          selectedTenant
-            ? [selectedTenant.first_name, selectedTenant.last_name]
-                .filter(Boolean)
-                .join(" ")
-            : "Tenant"
-        }
+        title=""
         wide
-      >
-        {selectedTenant && (
-          <div>
-            {/* Personal Information */}
+        headerActions={(() => {
+          const activeTenancy = (selectedTenant?.tenancies || []).find(
+            (tenancy) => tenancy.status === "active",
+          );
 
-            <div
-              className="panel"
-              style={{
-                marginBottom: 16,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 12,
-                }}
-              >
-                <h3 style={{ margin: 0 }}>Personal Information</h3>
-
+          if (activeTenancy) {
+            return (
+              <>
                 <button
                   type="button"
-                  className="secondary"
-                  onClick={openEditTenant}
+                  className="icon-btn"
+                  title="Edit rental"
+                  aria-label="Edit rental"
+                  onClick={() => openEditTenancy(activeTenancy)}
                 >
-                  <Pencil size={15} />
-                  Edit
+                  <Pencil size={17} />
                 </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="Transfer tenant"
+                  aria-label="Transfer tenant"
+                  onClick={() => openTransfer(activeTenancy)}
+                >
+                  <ArrowRightLeft size={17} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="Move out tenant"
+                  aria-label="Move out tenant"
+                  onClick={() => openMoveOut(activeTenancy)}
+                >
+                  <LogOut size={17} />
+                </button>
+              </>
+            );
+          }
+
+          const endedTenancy = (selectedTenant?.tenancies || [])
+            .filter((tenancy) => tenancy.status === "ended")
+            .slice()
+            .sort(
+              (a, b) =>
+                new Date(b.end_date || b.start_date) -
+                new Date(a.end_date || a.start_date),
+            )[0];
+
+          if (selectedTenant?.status === "moved_out" && endedTenancy) {
+            return (
+              <button
+                type="button"
+                className="icon-btn"
+                title="Restore moved-out tenant"
+                aria-label="Restore moved-out tenant"
+                onClick={() => openRestore(endedTenancy)}
+              >
+                <RotateCcw size={17} />
+              </button>
+            );
+          }
+
+          return null;
+        })()}
+      >
+        {selectedTenant && (
+          <div className="tenant-profile-content">
+            {/* Personal Information */}
+            <div
+              className="panel tenant-profile-personal-panel"
+              style={{ marginBottom: 16 }}
+            >
+              <h3>Personal Information</h3>
+
+              <div className="tenant-profile-personal-grid">
+                <div className="tenant-profile-avatar" aria-hidden="true">
+                  {(selectedTenant.first_name?.[0] || "T").toUpperCase()}
+                  {(selectedTenant.last_name?.[0] || "").toUpperCase()}
+                </div>
+
+                <div className="tenant-profile-identity">
+                  <strong className="tenant-profile-name">
+                    {[selectedTenant.first_name, selectedTenant.last_name]
+                      .filter(Boolean)
+                      .join(" ") || "Tenant"}
+                  </strong>
+
+                  <div className="tenant-profile-field">
+                    <span className="tenant-profile-label">Phone</span>
+                    <span>{selectedTenant.phone || "—"}</span>
+                  </div>
+
+                  <div className="tenant-profile-field">
+                    <span className="tenant-profile-label">Email</span>
+                    <span>{selectedTenant.email || "—"}</span>
+                  </div>
+                </div>
+
+                <div className="tenant-profile-meta">
+                  <div className="tenant-profile-field tenant-profile-address">
+                    <span className="tenant-profile-label">Address</span>
+                    <span>{selectedTenant.address || "—"}</span>
+                  </div>
+
+                  <div className="tenant-profile-field tenant-profile-status">
+                    <span className="tenant-profile-label">Status</span>
+                    {selectedTenant.status === "active" ? (
+                      <span className="tenant-history-status tenant-history-status-active">
+                        Active
+                      </span>
+                    ) : selectedTenant.status === "moved_out" ? (
+                      <span className="tenant-history-status tenant-history-status-moved-out">
+                        Moved out
+                      </span>
+                    ) : (
+                      <span className="tenant-history-status tenant-history-status-ended">
+                        Ended
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <p>
-                <strong>Phone:</strong> {selectedTenant.phone || "—"}
-              </p>
-
-              <p>
-                <strong>Email:</strong> {selectedTenant.email || "—"}
-              </p>
-
-              <p>
-                <strong>Address:</strong> {selectedTenant.address || "—"}
-              </p>
-
-              <p>
-                <strong>Status:</strong>{" "}
-                {selectedTenant.status === "active" ? (
-                  <span className="tenant-history-status tenant-history-status-active">
-                    Active
-                  </span>
-                ) : selectedTenant.status === "moved_out" ? (
-                  <span className="tenant-history-status tenant-history-status-moved-out">
-                    Moved out
-                  </span>
-                ) : (
-                  <span className="tenant-history-status tenant-history-status-ended">
-                    Ended
-                  </span>
-                )}
-              </p>
-
               {selectedTenant.notes && (
-                <p>
-                  <strong>Notes:</strong> {selectedTenant.notes}
-                </p>
+                <div className="tenant-profile-notes">
+                  <span className="tenant-profile-label">Notes</span>
+                  <span>{selectedTenant.notes}</span>
+                </div>
               )}
             </div>
 
@@ -1037,40 +1186,6 @@ export default function Tenants() {
                         </p>
                       </div>
 
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          flexWrap: "wrap",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => openEditTenancy(t)}
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => openTransfer(t)}
-                        >
-                          <ArrowRightLeft size={16} />
-                          Transfer
-                        </button>
-
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => openMoveOut(t)}
-                        >
-                          <LogOut size={16} />
-                          Move Out
-                        </button>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -1093,7 +1208,6 @@ export default function Tenants() {
                         <th>End</th>
                         <th>Rent</th>
                         <th>Status</th>
-                        <th>Action</th>
                       </tr>
                     </thead>
 
@@ -1126,19 +1240,6 @@ export default function Tenants() {
                               )}
                             </td>
 
-                            <td>
-                              <button
-                                type="button"
-                                className="small-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditTenancy(t);
-                                }}
-                              >
-                                <Pencil size={13} />
-                                Edit
-                              </button>
-                            </td>
                           </tr>
                         ))}
                     </tbody>
@@ -1252,6 +1353,74 @@ export default function Tenants() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* ======================================================
+          RESTORE MOVED-OUT TENANT
+      ====================================================== */}
+
+      <Modal
+        open={restoreOpen}
+        onClose={() => {
+          setRestoreOpen(false);
+          setRestoringTenancy(null);
+        }}
+        title="Restore tenant"
+      >
+        <div className="restore-tenant-modal">
+          <div className="restore-tenant-icon">
+            <RotateCcw size={20} />
+          </div>
+
+          <h3>Restore this tenant?</h3>
+          <p>
+            This will undo the move-out and return the tenant to <strong>Active</strong>
+            status. The previous tenancy will become active again and the unit will
+            be marked as occupied.
+          </p>
+
+          {restoringTenancy && (
+            <div className="restore-tenant-summary">
+              <div>
+                <span>Tenant</span>
+                <strong>
+                  {[selectedTenant?.first_name, selectedTenant?.last_name]
+                    .filter(Boolean)
+                    .join(" ")}
+                </strong>
+              </div>
+              <div>
+                <span>Unit</span>
+                <strong>Unit {restoringTenancy.units?.unit_number || "—"}</strong>
+              </div>
+              <div>
+                <span>Move-in</span>
+                <strong>{dateLabel(restoringTenancy.start_date)}</strong>
+              </div>
+              <div>
+                <span>Move-out</span>
+                <strong>{dateLabel(restoringTenancy.end_date)}</strong>
+              </div>
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => {
+                setRestoreOpen(false);
+                setRestoringTenancy(null);
+              }}
+            >
+              Cancel
+            </button>
+            <button className="primary" type="button" onClick={restoreMoveOut}>
+              <RotateCcw size={16} />
+              Restore tenant
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* ======================================================

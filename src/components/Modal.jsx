@@ -7,6 +7,7 @@ export default function Modal({
   title,
   children,
   wide = false,
+  headerActions = null,
 }) {
   if (!open) return null;
 
@@ -18,9 +19,12 @@ export default function Modal({
       >
         <div className="modal-head">
           <h2>{title}</h2>
-          <button className="icon-btn" onClick={onClose}>
-            <X size={20} />
-          </button>
+          <div className="modal-head-actions">
+            {headerActions}
+            <button className="icon-btn" onClick={onClose} title="Close">
+              <X size={20} />
+            </button>
+          </div>
         </div>
         <div className="modal-body">{children}</div>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2, Droplets, Pencil, Plus, Zap } from "lucide-react";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
@@ -7,6 +7,7 @@ import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
 import { compareUnitNumbers, money } from "../lib/utils";
 import { useToast } from "../components/Toast";
+import { useSearchParams } from "react-router-dom";
 
 const emptyForm = () => ({
   property_id: "",
@@ -35,12 +36,20 @@ export default function Units() {
   const tenancies = useAsync(() => db.tenancies.list(), []);
 
   const [open, setOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [editingUnit, setEditingUnit] = useState(null);
 
   const [form, setForm] = useState(emptyForm());
 
   const toast = useToast();
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "unit") return;
+
+    openAdd();
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   /* ---------------------------------------------------------------------- */
   /* Helpers                                                                */
@@ -197,11 +206,6 @@ export default function Units() {
             rent rates.
           </p>
         </div>
-
-        <button className="primary" onClick={openAdd}>
-          <Plus size={17} />
-          Add Unit
-        </button>
       </div>
 
       <section className="unit-grid unit-directory-grid">

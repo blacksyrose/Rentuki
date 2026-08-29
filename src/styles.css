@@ -568,6 +568,12 @@ td small {
   font-size: 16px;
 }
 
+.modal-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .toast-stack {
   position: fixed;
   right: 18px;
@@ -2914,4 +2920,805 @@ tbody tr:hover {
 .payment-status-badge.waived {
   background: #f3f4f6;
   color: #6b7280;
+}
+
+/* ========================================================================== */
+/* App shell refresh - Luxeyline-inspired navigation/header                  */
+/* ========================================================================== */
+.sidebar {
+  width: 234px;
+  background: #ffffff;
+  color: #5f6d65;
+  padding: 0;
+  border-right: 1px solid var(--rk-border);
+  box-shadow: none;
+}
+
+.sidebar-collapsed .sidebar {
+  width: 72px;
+}
+
+.brand {
+  min-height: 70px;
+  padding: 0 18px;
+  gap: 10px;
+  border-bottom: 1px solid var(--rk-border-soft);
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--rk-green);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(4, 120, 87, 0.14);
+}
+
+.brand-copy strong {
+  color: var(--rk-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.brand-copy small {
+  color: var(--rk-muted);
+  font-size: 10px;
+}
+
+.sidebar-nav {
+  padding: 18px 12px !important;
+}
+
+.nav-section-label {
+  padding: 8px 11px 7px;
+  color: #9aa69f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+.sidebar nav a {
+  min-height: 40px;
+  padding: 9px 11px;
+  margin: 2px 0;
+  gap: 11px;
+  border-radius: 10px;
+  color: #607068;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sidebar nav a svg {
+  flex: 0 0 auto;
+  color: #718078;
+}
+
+.sidebar nav a:hover {
+  background: #f4f8f5;
+  color: var(--rk-green-dark);
+  transform: none;
+}
+
+.sidebar nav a:hover svg,
+.sidebar nav a.active svg {
+  color: currentColor;
+}
+
+.sidebar nav a.active {
+  background: var(--rk-green-soft);
+  color: var(--rk-green-dark);
+  font-weight: 750;
+}
+
+.sidebar nav a.active::before {
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+}
+
+.nav-divider {
+  margin: 13px 8px 8px;
+  background: var(--rk-border-soft);
+}
+
+.sidebar-bottom {
+  padding: 12px;
+  gap: 8px;
+  border-top: 1px solid var(--rk-border-soft);
+}
+
+.sidebar-utility-nav {
+  display: grid;
+  gap: 2px;
+}
+
+.sidebar-utility-nav a {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  color: #68766e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sidebar-utility-nav a:hover {
+  background: #f4f8f5;
+  color: var(--rk-green-dark);
+}
+
+.sidebar-utility-nav a.active {
+  background: var(--rk-green-soft);
+  color: var(--rk-green-dark);
+  font-weight: 750;
+}
+
+.sidebar-utility-nav a svg {
+  flex: 0 0 auto;
+}
+
+.sidebar-collapse {
+  height: 34px;
+  border-radius: 9px;
+  background: #fff;
+  color: #7d8b84;
+}
+
+.sidebar-collapse:hover {
+  background: #f8faf8;
+  color: var(--rk-green-dark);
+}
+
+.sidebar-collapsed .sidebar-utility-nav a {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar-collapsed .sidebar-utility-nav a span,
+.sidebar-collapsed .sidebar nav a span {
+  display: none;
+}
+
+.main {
+  margin-left: 234px;
+}
+
+.sidebar-collapsed .main {
+  margin-left: 72px;
+}
+
+.topbar {
+  height: 64px;
+  padding: 0 22px;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--rk-border);
+  box-shadow: 0 1px 8px rgba(23, 33, 27, 0.025);
+}
+
+.topbar-left {
+  min-width: 0;
+}
+
+.topbar-title,
+.topbar-context {
+  display: none !important;
+}
+
+.topbar-right {
+  gap: 8px;
+}
+
+.topbar-icon-btn,
+.profile-btn {
+  background: #f7fbf9;
+  box-shadow: inset 0 0 0 1px #e3eee8;
+}
+
+.topbar-icon-btn {
+  width: 35px;
+  height: 35px;
+}
+
+.profile-btn {
+  min-height: 38px;
+  padding: 3px 7px 3px 4px;
+  gap: 8px;
+}
+
+.profile-avatar {
+  width: 31px;
+  height: 31px;
+}
+
+.profile-header-copy {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 74px;
+  margin: 0 !important;
+  line-height: 1.1;
+}
+
+.profile-header-copy strong {
+  color: var(--rk-text) !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  white-space: nowrap;
+}
+
+.profile-header-copy small {
+  margin: 0 !important;
+  color: var(--rk-muted) !important;
+  font-size: 9px !important;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .main,
+  .sidebar-collapsed .main {
+    margin-left: 0;
+  }
+
+  .sidebar {
+    width: 234px;
+  }
+
+  .topbar {
+    padding: 0 14px;
+  }
+
+  .topbar-left {
+    width: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-header-copy {
+    display: none !important;
+  }
+
+  .profile-btn {
+    padding-right: 5px;
+  }
+}
+
+/* =========================================================
+   FINAL SIDEBAR / HEADER LAYOUT FIX
+   - Brand and topbar share the exact same 64px height.
+   - Desktop sidebar collapse stays at the bottom.
+   - No divider between Workspace and Finance.
+   - No divider above Tenant Portal / Settings.
+   - Mobile never inherits the desktop sidebar margin.
+   ========================================================= */
+
+.sidebar {
+  width: 234px;
+  padding: 0;
+  background: #fff;
+  border-right: 1px solid var(--rk-border);
+  box-shadow: none;
+}
+
+.sidebar-collapsed .sidebar {
+  width: 76px;
+}
+
+.brand {
+  height: 64px;
+  min-height: 64px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--rk-border);
+}
+
+.brand-mark {
+  flex: 0 0 auto;
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-copy strong {
+  display: block;
+  white-space: nowrap;
+}
+
+.sidebar nav {
+  padding: 22px 12px 10px;
+}
+
+.nav-section-label {
+  padding: 8px 11px 7px;
+}
+
+.sidebar nav a {
+  min-height: 43px;
+  margin: 2px 0;
+  padding: 11px 12px;
+}
+
+/* Remove the Workspace/Finance separator. */
+.sidebar .nav-divider {
+  display: none;
+}
+
+/* Keep utility links at the bottom without a top divider. */
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 0;
+  display: grid;
+  gap: 7px;
+}
+
+/* The collapse control belongs at the bottom of the sidebar. */
+.sidebar-collapse {
+  display: grid !important;
+  width: 100%;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--rk-border);
+  background: #fff;
+  color: #7c8982;
+  border-radius: 10px;
+}
+
+.sidebar-collapse:hover {
+  background: #f8faf8;
+  color: var(--rk-green-dark);
+}
+
+.main {
+  margin-left: 234px;
+  min-width: 0;
+  background: var(--rk-bg);
+}
+
+.sidebar-collapsed .main {
+  margin-left: 76px;
+}
+
+.topbar {
+  height: 64px;
+  min-height: 64px;
+  padding: 0 24px;
+}
+
+/* Header intentionally has no page title/time block. */
+.topbar-title,
+.topbar-context {
+  display: none !important;
+}
+
+/* Restore the intended collapsed-sidebar behavior. */
+.sidebar-collapsed .sidebar nav {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.sidebar-collapsed .sidebar nav a,
+.sidebar-collapsed .sidebar-utility-nav a {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar-collapsed .sidebar nav a span,
+.sidebar-collapsed .sidebar-utility-nav a span,
+.sidebar-collapsed .brand-copy {
+  display: none;
+}
+
+.sidebar-collapsed .nav-section-label {
+  display: none;
+}
+
+.sidebar-collapsed .sidebar-bottom {
+  padding: 10px;
+}
+
+/* Critical: these rules must come after the desktop rules so the
+   responsive layout is not forced to keep a 234px left margin. */
+@media (max-width: 800px) {
+  .sidebar,
+  .sidebar-collapsed .sidebar {
+    width: 234px;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main,
+  .sidebar-collapsed .main {
+    margin-left: 0 !important;
+  }
+
+  .topbar {
+    height: 64px;
+    min-height: 64px;
+    padding: 0 14px;
+  }
+
+  .topbar-left {
+    width: auto;
+  }
+
+  .menu-btn {
+    display: flex;
+  }
+
+  .sidebar-collapse {
+    display: none !important;
+  }
+
+  .sidebar-collapsed .sidebar nav a,
+  .sidebar-collapsed .sidebar-utility-nav a {
+    justify-content: flex-start;
+    padding-left: 11px;
+    padding-right: 11px;
+  }
+
+  .sidebar-collapsed .sidebar nav a span,
+  .sidebar-collapsed .sidebar-utility-nav a span,
+  .sidebar-collapsed .brand-copy {
+    display: block;
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-header-copy {
+    display: none !important;
+  }
+}
+
+
+/* =========================================================
+   BRAND / HEADER FINAL ALIGNMENT
+   The brand row and topbar use the same fixed 64px box.
+   The desktop collapse control sits beside the Rentuki brand.
+   ========================================================= */
+.sidebar,
+.topbar,
+.brand {
+  box-sizing: border-box;
+}
+
+.brand {
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px;
+  padding: 0 14px 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--rk-border-soft);
+}
+
+.brand-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.brand-collapse {
+  width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center;
+  border: 0 !important;
+  background: transparent !important;
+  color: #7c8982;
+  border-radius: 7px;
+  box-shadow: none !important;
+}
+
+.brand-collapse:hover {
+  background: #f3f7f4 !important;
+  color: var(--rk-green-dark);
+}
+
+/* No collapse button remains in the bottom utility area. */
+.sidebar-bottom {
+  border-top: 0 !important;
+}
+
+.topbar {
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 800px) {
+  .brand {
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px;
+  }
+
+  .brand-collapse {
+    display: none !important;
+  }
+}
+
+/* =========================================================
+   MOBILE SWIPE NAVIGATION
+   Keep normal vertical scrolling while allowing the layout-level
+   touch handlers to detect intentional horizontal swipes.
+   ========================================================= */
+@media (max-width: 800px) {
+  .app-shell {
+    touch-action: pan-y;
+  }
+}
+
+
+/* Global Create menu */
+.create-menu-wrap {
+  position: relative;
+}
+
+.create-action-btn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--rk-border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--rk-ink);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.create-action-btn:hover,
+.create-action-btn.active {
+  background: var(--rk-green-soft);
+  border-color: #a9cdbb;
+  color: var(--rk-green-dark);
+}
+
+.create-action-chevron {
+  transition: transform 0.18s ease;
+}
+
+.create-action-chevron.open {
+  transform: rotate(180deg);
+}
+
+.create-dropdown {
+  width: 300px;
+  padding: 8px;
+  right: 0;
+  left: auto;
+  overflow: visible;
+}
+
+.create-dropdown-heading {
+  padding: 9px 10px 10px;
+  border-bottom: 1px solid #edf0f4;
+  margin-bottom: 5px;
+}
+
+.create-dropdown-heading strong {
+  display: block;
+  color: var(--rk-ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.create-dropdown-heading span {
+  display: block;
+  margin-top: 3px;
+  color: #8995a7;
+  font-size: 10px;
+}
+
+.create-dropdown > button,
+.create-menu-group-button {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rk-ink);
+  text-align: left;
+}
+
+.create-dropdown > button {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.create-dropdown > button:hover,
+.create-menu-group:hover > .create-menu-group-button {
+  background: #f5f8f6;
+}
+
+/* Create menu icons — reset topbar span defaults and center precisely */
+.topbar .create-item-icon {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  flex: 0 0 34px;
+
+  display: grid !important;
+  place-items: center !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 9px;
+  box-sizing: border-box;
+
+  background: var(--rk-green-soft);
+  color: var(--rk-green-dark);
+  line-height: 0 !important;
+  font-size: 0 !important;
+}
+
+.topbar .create-item-icon svg {
+  display: block !important;
+  width: 17px;
+  height: 17px;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: none;
+  align-self: center;
+  justify-self: center;
+}
+
+.create-item-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.create-item-copy strong {
+  display: block;
+  color: #26352c;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.create-item-copy small {
+  display: block;
+  margin-top: 3px;
+  color: #8995a7;
+  font-size: 9px;
+}
+
+.create-menu-group {
+  position: relative;
+}
+
+.create-menu-group-button {
+  cursor: default;
+  align-items: center;
+}
+
+.create-menu-group-button .create-item-copy {
+  align-self: center;
+}
+
+.create-menu-group-button::after {
+  content: "›";
+  margin-left: auto;
+  color: #a0aaa4;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.create-submenu {
+  position: absolute;
+  right: calc(100% + 6px);
+  top: 2px;
+  width: 210px;
+  padding: 6px;
+  border: 1px solid var(--rk-border);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(23, 33, 27, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(4px);
+  transition: 0.14s ease;
+  z-index: 20;
+}
+
+.create-menu-group:hover .create-submenu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.create-submenu button {
+  width: 100%;
+  display: block;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.create-submenu button:hover {
+  background: var(--rk-green-wash);
+}
+
+.create-submenu button span {
+  display: block;
+  color: #26352c;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.create-submenu button small {
+  display: block;
+  margin-top: 2px;
+  color: #8995a7;
+  font-size: 8px;
+}
+
+@media (max-width: 800px) {
+  .create-action-btn {
+    width: 38px;
+    min-width: 38px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .create-action-btn > span,
+  .create-action-btn .create-action-chevron {
+    display: none;
+  }
+
+  .create-dropdown {
+    width: min(300px, calc(100vw - 28px));
+    right: -8px;
+  }
+
+  .create-submenu {
+    position: static;
+    width: auto;
+    margin: -2px 6px 5px 52px;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    box-shadow: none;
+    border-color: #edf0f4;
+  }
 }

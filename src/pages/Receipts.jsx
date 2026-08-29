@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import jsPDF from "jspdf";
 import unicodeFontUrl from "dejavu-fonts-ttf/ttf/DejaVuSans.ttf?url";
@@ -17,6 +18,7 @@ export default function Receipts() {
   const [selected, setSelected] = useState("");
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const toast = useToast();
 
@@ -77,6 +79,13 @@ export default function Receipts() {
     setModalOpen(false);
   };
 
+  useEffect(() => {
+    if (searchParams.get("generate") !== "1") return;
+
+    openGenerateModal("");
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const handleGenerate = async () => {
     if (!selectedPayment) {
       toast.error("Please select a payment.");
@@ -103,15 +112,6 @@ export default function Receipts() {
           <p>Generate receipts and keep a permanent record.</p>
         </div>
 
-        <div className="actions">
-          <button
-            className="primary receipts-generate-btn"
-            onClick={() => openGenerateModal("")}
-          >
-            <PlusIcon />
-            Generate receipt
-          </button>
-        </div>
       </div>
 
       {/* ---------------------------------------------------------------- */}
@@ -1031,22 +1031,6 @@ function drawCheckbox(doc, x, y, label, checked, green, muted) {
 /* ICONS                                                                      */
 /* ========================================================================== */
 
-function PlusIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
 
 function SearchIcon() {
   return (

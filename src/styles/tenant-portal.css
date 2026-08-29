@@ -253,7 +253,7 @@
 }
 
 .portal-content {
-  width: min(1180px, calc(100% - 40px));
+  width: min(1440px, calc(100% - 48px));
   margin: 0 auto;
   padding: 34px 0 48px;
 }
@@ -1832,7 +1832,13 @@
   color: #6d58a1;
 }
 
-.portal-download-receipt {
+.portal-receipt-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.portal-download-receipt,
+.portal-view-receipt {
   width: 29px;
   height: 29px;
   display: inline-grid;
@@ -1845,10 +1851,47 @@
   transition: 0.15s ease;
 }
 
-.portal-download-receipt:hover {
+.portal-download-receipt:hover,
+.portal-view-receipt:hover {
   border-color: #9fc7b5;
   background: var(--rk-green-soft);
   transform: translateY(-1px);
+}
+
+.portal-receipt-list {
+  position: relative;
+  text-align: left;
+}
+
+.portal-receipt-list summary {
+  cursor: pointer;
+  color: var(--rk-green-dark);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.portal-receipt-list-items {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  top: 22px;
+  width: 190px;
+  padding: 7px;
+  border: 1px solid #d7e2dc;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(40, 62, 50, 0.14);
+}
+
+.portal-receipt-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  color: #617269;
+  font-size: 9px;
 }
 
 .portal-activity-card {
@@ -1969,7 +2012,7 @@
 
 /* Billing-record based payment history */
 .portal-billing-history-table {
-  min-width: 980px;
+  min-width: 1080px;
 }
 
 .portal-billing-history-table th,
@@ -1996,18 +2039,18 @@
   min-width: 76px;
 }
 
-.portal-billing-history-table th:nth-child(4),
-.portal-billing-history-table td:nth-child(4),
 .portal-billing-history-table th:nth-child(5),
 .portal-billing-history-table td:nth-child(5),
 .portal-billing-history-table th:nth-child(6),
-.portal-billing-history-table td:nth-child(6) {
+.portal-billing-history-table td:nth-child(6),
+.portal-billing-history-table th:nth-child(7),
+.portal-billing-history-table td:nth-child(7) {
   text-align: right;
 }
 
-.portal-billing-history-table th:nth-child(7),
-.portal-billing-history-table td:nth-child(7),
-.portal-billing-history-table th:nth-child(9),
-.portal-billing-history-table td:nth-child(9) {
+.portal-billing-history-table th:nth-child(8),
+.portal-billing-history-table td:nth-child(8),
+.portal-billing-history-table th:nth-child(10),
+.portal-billing-history-table td:nth-child(10) {
   text-align: center;
 }

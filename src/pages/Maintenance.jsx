@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Pencil, Plus, Receipt, Search, Trash2, Wrench } from "lucide-react";
+import { Pencil, Receipt, Search, Trash2, Wrench } from "lucide-react";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
@@ -45,6 +45,23 @@ export default function Maintenance() {
   const [form, setForm] = useState(emptyMaintenanceForm());
   const [search, setSearch] = useState("");
   const toast = useToast();
+
+  useEffect(() => {
+    const create = searchParams.get("create");
+
+    if (create !== "maintenance" && create !== "expense") return;
+
+    const nextTab = create === "expense" ? "expenses" : "maintenance";
+
+    setTab(nextTab);
+    setEditingMaintenance(null);
+    setEditingExpense(null);
+    setForm(
+      nextTab === "maintenance" ? emptyMaintenanceForm() : emptyExpenseForm(),
+    );
+    setOpen(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   /* ---------------------------------------------------------------------- */
   /* Helpers                                                                */
@@ -416,10 +433,6 @@ export default function Maintenance() {
           <p>Track repairs and operating costs in one place.</p>
         </div>
 
-        <button className="primary maintenance-create-btn" onClick={openCreate}>
-          <Plus size={16} />
-          {tab === "maintenance" ? "New request" : "Add expense"}
-        </button>
       </div>
 
       {/* ------------------------------------------------------------------ */}

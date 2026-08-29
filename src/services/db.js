@@ -224,19 +224,8 @@ export const db = {
         }),
       );
 
-      /*
-       * A tenant who has moved out must no longer be able to access
-       * the tenant portal. Keep the historical tenant/payment records,
-       * but immediately invalidate the private access key.
-       */
-      if (tenantId) {
-        await unwrap(
-          supabase
-            .from("tenants")
-            .update({ tenant_access_key: null })
-            .eq("id", tenantId),
-        );
-      }
+      // Keep the existing key so moved-out tenants can review their
+      // outstanding rent and payment history in the read-only portal.
 
       return result;
     },
@@ -411,7 +400,7 @@ export const db = {
         supabase
           .from("payments")
           .select(
-            "*, billing_records(billing_month,amount_due,tenancy_id), tenants(id,first_name,last_name), tenancies(tenant_id,units(unit_number),start_date,end_date)",
+            "*, billing_records(billing_month,amount_due,tenancy_id), tenants(id,first_name,last_name), tenancies(tenant_id,monthly_rent,units(unit_number),start_date,end_date)",
           )
           .order("payment_date", {
             ascending: false,
@@ -619,6 +608,32 @@ export async function recordPayment({
         `Payment exceeds the remaining balance of ${balance.toFixed(2)}.`,
       );
     }
+  } else {
+    const tenancy = await unwrap(
+      supabase
+        .from("tenancies")
+        .select("monthly_rent")
+        .eq("id", tenancyId)
+        .single(),
+    );
+    const priorPayments = await unwrap(
+      supabase
+        .from("payments")
+        .select("amount")
+        .eq("tenancy_id", tenancyId)
+        .eq("payment_type", type),
+    );
+    const priorPaid = (priorPayments || []).reduce(
+      (sum, payment) => sum + Number(payment.amount || 0),
+      0,
+    );
+    const expectedAmount = Number(tenancy.monthly_rent || 0);
+
+    if (paymentAmount + priorPaid > expectedAmount) {
+      throw new Error(
+        `${type === "deposit" ? "Security deposit" : "Advance rent"} cannot exceed one month's rent of ${expectedAmount.toFixed(2)}.`,
+      );
+    }
   }
 
   /*
@@ -720,6 +735,54 @@ export async function updatePayment(idOrOptions, maybePayload) {
     }
 
     cleaned.payment_type = paymentType;
+  }
+
+  /*
+   * Deposits and advance rent are each capped at one month's rent for the
+   * tenancy. Check the persisted payment too, so edits cannot bypass the
+   * same balance rule used when recording a new payment.
+   */
+  if (cleaned.amount !== undefined || cleaned.payment_type !== undefined) {
+    const existingPayment = await unwrap(
+      supabase
+        .from("payments")
+        .select("amount, tenancy_id, payment_type")
+        .eq("id", id)
+        .single(),
+    );
+    const paymentType = cleaned.payment_type || existingPayment.payment_type;
+
+    if (paymentType === "advance" || paymentType === "deposit") {
+      const [tenancy, priorPayments] = await Promise.all([
+        unwrap(
+          supabase
+            .from("tenancies")
+            .select("monthly_rent")
+            .eq("id", existingPayment.tenancy_id)
+            .single(),
+        ),
+        unwrap(
+          supabase
+            .from("payments")
+            .select("id, amount")
+            .eq("tenancy_id", existingPayment.tenancy_id)
+            .eq("payment_type", paymentType),
+        ),
+      ]);
+      const priorPaid = (priorPayments || []).reduce(
+        (sum, payment) =>
+          payment.id === id ? sum : sum + Number(payment.amount || 0),
+        0,
+      );
+      const amount = cleaned.amount ?? Number(existingPayment.amount || 0);
+      const expectedAmount = Number(tenancy.monthly_rent || 0);
+
+      if (amount + priorPaid > expectedAmount) {
+        throw new Error(
+          `${paymentType === "deposit" ? "Security deposit" : "Advance rent"} cannot exceed one month's rent of ${expectedAmount.toFixed(2)}.`,
+        );
+      }
+    }
   }
 
   return db.payments.update(id, cleaned);

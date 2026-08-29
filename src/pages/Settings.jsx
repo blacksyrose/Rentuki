@@ -507,7 +507,7 @@ function ReportsSection() {
     <>
       <div className="page-head report-page-head">
         <div>
-          <h1>Reports &amp; Import</h1>
+          <h1>Reports</h1>
           <p>
             Export operational data and safely import existing spreadsheet
             records.
@@ -759,35 +759,17 @@ export default function Settings() {
       const rows = await db.tenants.list();
       const allTenants = Array.isArray(rows) ? rows : [];
 
-      /*
-       * Tenant access keys are only available for tenants who are
-       * currently active and have an active tenancy/unit.
-       *
-       * This also cleans up any old keys left behind by tenants who
-       * were already moved out before this rule was added.
-       */
-      const activeTenants = allTenants.filter(
-        (tenant) => tenant.status === "active" && Boolean(currentUnit(tenant)),
-      );
-
-      const inactiveWithKeys = allTenants.filter(
+      const portalTenants = allTenants.filter(
         (tenant) =>
-          tenant.tenant_access_key &&
-          !(tenant.status === "active" && Boolean(currentUnit(tenant))),
+          (tenant.status === "active" && Boolean(currentUnit(tenant))) ||
+          tenant.status === "moved_out",
       );
 
-      // Disable stale access keys for moved-out/historical tenants.
-      await Promise.all(
-        inactiveWithKeys.map((tenant) =>
-          db.tenants.update(tenant.id, { tenant_access_key: null }),
-        ),
-      );
-
-      setTenants(activeTenants);
+      setTenants(portalTenants);
 
       setHiddenKeys(
         Object.fromEntries(
-          activeTenants
+          portalTenants
             .filter((tenant) => tenant.tenant_access_key)
             .map((tenant) => [tenant.id, true]),
         ),
@@ -799,27 +781,37 @@ export default function Settings() {
     }
   };
 
-  const sortedTenants = [...tenants].sort((a, b) => {
-    const unitA = currentUnit(a);
-    const unitB = currentUnit(b);
+  const sortTenants = (tenantRows) =>
+    [...tenantRows].sort((a, b) => {
+      const unitA = currentUnit(a);
+      const unitB = currentUnit(b);
 
-    // Tenants without an active unit go to the bottom
-    if (!unitA && !unitB) return 0;
-    if (!unitA) return 1;
-    if (!unitB) return -1;
+      // Tenants without an active unit go to the bottom
+      if (!unitA && !unitB) return 0;
+      if (!unitA) return 1;
+      if (!unitB) return -1;
 
-    // Extract the numeric portion of the unit number
-    const numberA = parseInt(String(unitA).match(/\d+/)?.[0] || "0", 10);
-    const numberB = parseInt(String(unitB).match(/\d+/)?.[0] || "0", 10);
+      // Extract the numeric portion of the unit number
+      const numberA = parseInt(String(unitA).match(/\d+/)?.[0] || "0", 10);
+      const numberB = parseInt(String(unitB).match(/\d+/)?.[0] || "0", 10);
 
-    // Numeric ascending order
-    if (numberA !== numberB) {
-      return numberA - numberB;
-    }
+      // Numeric ascending order
+      if (numberA !== numberB) {
+        return numberA - numberB;
+      }
 
-    // Fallback for units with the same number
-    return String(unitA).localeCompare(String(unitB));
-  });
+      // Fallback for units with the same number
+      return String(unitA).localeCompare(String(unitB));
+    });
+
+  const activeTenants = sortTenants(
+    tenants.filter(
+      (tenant) => tenant.status === "active" && Boolean(currentUnit(tenant)),
+    ),
+  );
+  const movedOutTenants = sortTenants(
+    tenants.filter((tenant) => tenant.status === "moved_out"),
+  );
 
   useEffect(() => {
     db.properties
@@ -954,8 +946,7 @@ export default function Settings() {
           <div>
             <h2>Tenant access keys</h2>
             <p>
-              Private keys allow tenants to open their read-only rental summary
-              without creating an account.
+              Private keys allow tenants to open their read-only rental summary.
             </p>
           </div>
         </div>
@@ -978,112 +969,133 @@ export default function Settings() {
               <EmptyState
                 icon={KeyRound}
                 title="No tenant access keys yet"
-                message="Only active tenants with an active unit can have a private portal key."
+                message="Active and moved-out tenants can have a private portal key."
               />
             </div>
           ) : (
-            sortedTenants.map((tenant) => {
-              const key = tenant.tenant_access_key || "";
-              const unit = currentUnit(tenant);
-              const working = workingTenantId === tenant.id;
-
-              return (
-                <div className="tenant-access-row" key={tenant.id}>
-                  <div className="tenant-access-tenant">
-                    <strong>{tenantName(tenant)}</strong>
-                    <span>{unit ? `Unit ${unit}` : "Historical tenant"}</span>
-                  </div>
-
-                  <div className="tenant-access-key-wrap">
-                    <div className="tenant-access-key">
-                      {key
-                        ? hiddenKeys[tenant.id]
-                          ? "••••••••••••••••"
-                          : key
-                        : "No access key generated"}
-                    </div>
-
-                    {key && (
-                      <button
-                        type="button"
-                        className="small-btn"
-                        title={
-                          hiddenKeys[tenant.id]
-                            ? "Show full access key"
-                            : "Hide access key"
-                        }
-                        onClick={() =>
-                          setHiddenKeys((current) => ({
-                            ...current,
-                            [tenant.id]: !current[tenant.id],
-                          }))
-                        }
-                        disabled={working}
-                      >
-                        {hiddenKeys[tenant.id] ? (
-                          <Eye size={14} />
-                        ) : (
-                          <EyeOff size={14} />
-                        )}
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="tenant-access-actions">
-                    {key && (
-                      <button
-                        type="button"
-                        className="small-btn"
-                        title="Copy access key"
-                        onClick={() => copyKey(key)}
-                        disabled={working}
-                      >
-                        <Copy size={14} />
-                        Copy
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      className="small-btn"
-                      onClick={() => generateKey(tenant)}
-                      disabled={working}
-                    >
-                      <RefreshCw size={14} />
-                      {key ? "Regenerate" : "Generate"}
-                    </button>
-
-                    {key && (
-                      <button
-                        type="button"
-                        className="small-btn danger-outline"
-                        onClick={() => updateTenantKey(tenant, null)}
-                        disabled={working}
-                      >
-                        <XCircle size={14} />
-                        Disable
-                      </button>
-                    )}
-                  </div>
+            [
+              {
+                id: "active",
+                title: "Active Tenants",
+                description: "Current tenants with an active unit.",
+                items: activeTenants,
+              },
+              {
+                id: "moved-out",
+                title: "Historical Tenants",
+                description:
+                  "Read-only access to rental and unpaid-balance records.",
+                items: movedOutTenants,
+              },
+            ].map((group) => (
+              <section className="tenant-access-group" key={group.id}>
+                <div className="tenant-access-group-head">
+                  <h3>{group.title}</h3>
+                  <p>{group.description}</p>
                 </div>
-              );
-            })
+
+                {group.items.length ? (
+                  group.items.map((tenant) => {
+                    const key = tenant.tenant_access_key || "";
+                    const unit = currentUnit(tenant);
+                    const working = workingTenantId === tenant.id;
+
+                    return (
+                      <div className="tenant-access-row" key={tenant.id}>
+                        <div className="tenant-access-tenant">
+                          <strong>{tenantName(tenant)}</strong>
+                          <span>
+                            {unit
+                              ? `Unit ${unit}`
+                              : tenant.status === "moved_out"
+                                ? "Moved out"
+                                : "Historical tenant"}
+                          </span>
+                        </div>
+
+                        <div className="tenant-access-key-wrap">
+                          <div className="tenant-access-key">
+                            {key
+                              ? hiddenKeys[tenant.id]
+                                ? "••••••••••••••••"
+                                : key
+                              : "No access key generated"}
+                          </div>
+
+                          {key && (
+                            <button
+                              type="button"
+                              className="small-btn"
+                              title={
+                                hiddenKeys[tenant.id]
+                                  ? "Show full access key"
+                                  : "Hide access key"
+                              }
+                              onClick={() =>
+                                setHiddenKeys((current) => ({
+                                  ...current,
+                                  [tenant.id]: !current[tenant.id],
+                                }))
+                              }
+                              disabled={working}
+                            >
+                              {hiddenKeys[tenant.id] ? (
+                                <Eye size={14} />
+                              ) : (
+                                <EyeOff size={14} />
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="tenant-access-actions">
+                          {key && (
+                            <button
+                              type="button"
+                              className="small-btn"
+                              title="Copy access key"
+                              onClick={() => copyKey(key)}
+                              disabled={working}
+                            >
+                              <Copy size={14} />
+                              Copy
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="small-btn"
+                            onClick={() => generateKey(tenant)}
+                            disabled={working}
+                          >
+                            <RefreshCw size={14} />
+                            {key ? "Regenerate" : "Generate"}
+                          </button>
+
+                          {key && (
+                            <button
+                              type="button"
+                              className="small-btn danger-outline"
+                              onClick={() => updateTenantKey(tenant, null)}
+                              disabled={working}
+                            >
+                              <XCircle size={14} />
+                              Disable
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="tenant-access-empty tenant-access-group-empty">
+                    No tenants in this group.
+                  </div>
+                )}
+              </section>
+            ))
           )}
         </div>
-      </section>
-
-      <section className="panel">
-        <h2>Important business rules</h2>
-        <ul className="rules">
-          <li>Move-in date and payment due day are separate.</li>
-          <li>Rent is stored on each tenancy, preserving historical rates.</li>
-          <li>Transfers end the old tenancy and create a new one.</li>
-          <li>Historical tenants do not need an active unit.</li>
-          <li>
-            Financial records are never overwritten just because a unit's
-            current rent changes.
-          </li>
-        </ul>
       </section>
 
       <ReportsSection />

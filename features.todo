@@ -1,0 +1,24 @@
+RENTUKI TO-DO LIST:
+
+    ADD:
+        ✔ Add 'Deposit' and 'Advance' payment type in the tenant portal. @done (8/29/2026, 10:38:26 PM)
+        ✔ Enable gesture open for sidebar (swipe from left to right). @done (8/30/2026, 1:11:01 AM)
+        ✔ Enable access key to tenant who 'moved_out'. @done (8/29/2026, 11:04:55 PM)
+        Additional:
+            ✔ Monthly Rent = Null @done (8/29/2026, 11:04:58 PM)
+            ✔ Current Balance = Null @done (8/29/2026, 11:04:59 PM)
+            ✔ Overall cards should still show the total (Some previous tenant who 'moved_out' still has unpaid rent). @done (8/29/2026, 11:05:03 PM)
+        ☐ Add 'Dark Mode' theme.
+        ☐ QR Code for payment in tenant portal.
+        ✔ Profile picture for tenants @done (8/30/2026, 2:04:40 AM)
+        ☐ Chat (Probaby connected to whatsApp)
+        ☐ Export CSV on each page (Instead of having repots area)
+    
+    UPDATE:
+        ✔ In the tenant form, It should only have a centralized action button for every cards @done (8/30/2026, 2:04:47 AM)
+        ☐ Icon buttons only (remove text)
+
+    FIX:
+        ☐ The scroll in the tenant access key carc/form not working.
+        ☐ Improve overall UI/UX.
+        ✔ Notification delay @done (8/30/2026, 12:36:41 AM)

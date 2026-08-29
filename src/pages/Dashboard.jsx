@@ -346,40 +346,7 @@ export default function Dashboard() {
           <h1>{getTimeGreeting()}, Admin</h1>
           <p>Here's what's happening with your properties today.</p>
         </div>
-        <div className="actions dashboard-quick-actions">
-          <Link
-            to="/tenants"
-            className="icon-btn"
-            aria-label="Add tenant"
-            title="Add tenant"
-          >
-            <UserPlus size={17} />
-          </Link>
-          <Link
-            to="/units"
-            className="icon-btn"
-            aria-label="Add unit"
-            title="Add unit"
-          >
-            <Building2 size={17} />
-          </Link>
-          <Link
-            to="/payments"
-            className="icon-btn"
-            aria-label="Record payment"
-            title="Record payment"
-          >
-            <CreditCard size={17} />
-          </Link>
-          <Link
-            to="/maintenance"
-            className="icon-btn"
-            aria-label="Add expense"
-            title="Add expense"
-          >
-            <Wallet size={17} />
-          </Link>
-        </div>
+
       </div>
 
       {/* SUMMARY CARDS */}

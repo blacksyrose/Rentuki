@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   Building2,
@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Home,
+  Plus,
 } from "lucide-react";
 
 import { signOut } from "../lib/auth";
@@ -28,29 +29,19 @@ import { useAsync } from "../hooks/useData";
 import { db } from "../services/db";
 import { supabase } from "../lib/supabase";
 
-const nav = [
+const workspaceNav = [
   ["/", "Dashboard", LayoutDashboard],
-  ["/tenants", "Tenant Directory", Users],
-  ["/units", "Unit Overview", Building2],
+  ["/tenants", "Tenants", Users],
+  ["/units", "Units", Building2],
   ["/payments", "Payments", CreditCard],
   ["/maintenance", "Maintenance & Expenses", Wrench],
+];
+
+const financeNav = [
   ["/summary", "Monthly Summary", CalendarRange],
   ["/receipts", "Receipts", Receipt],
   ["/submeter-calculator", "Calculator", Calculator],
 ];
-
-const pageTitles = {
-  "/": "Dashboard",
-  "/tenants": "Tenant Directory",
-  "/units": "Unit Overview",
-  "/payments": "Payments",
-  "/maintenance": "Maintenance & Expenses",
-  "/summary": "Monthly Summary",
-  "/receipts": "Receipts",
-  "/submeter-calculator": "Submeter Calculator",
-  "/tenant-portal": "Tenant Portal",
-  "/settings": "Settings",
-};
 
 function dateKey(date) {
   const value = new Date(date);
@@ -67,14 +58,6 @@ function getInitials(name) {
       .map((part) => part[0].toUpperCase())
       .join("") || "A"
   );
-}
-
-function getTodayLabel() {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date());
 }
 
 function getNotifications(billing, maintenance) {
@@ -208,11 +191,12 @@ export default function AppLayout() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationFilter, setNotificationFilter] = useState("all");
   const [profileName, setProfileName] = useState("Account");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const notificationMenuRef = useRef(null);
+  const createMenuRef = useRef(null);
 
   const navigate = useNavigate();
-  const location = useLocation();
   // Notifications need the complete billing history, including previous months.
   const billing = useAsync(() => db.billing.listAll(), []);
   const maintenance = useAsync(() => db.maintenance.list(), []);
@@ -273,16 +257,20 @@ export default function AppLayout() {
           }
           return true;
         });
-  useEffect(() => {
-    const refreshNotifications = () => {
-      billing.refresh();
-      maintenance.refresh();
-    };
+  const refreshNotifications = () => {
+    billing.refresh();
+    maintenance.refresh();
+  };
 
+  useEffect(() => {
+    const intervalId = window.setInterval(refreshNotifications, 5000);
     window.addEventListener("focus", refreshNotifications);
+    window.addEventListener("rentuki:data-changed", refreshNotifications);
 
     return () => {
+      window.clearInterval(intervalId);
       window.removeEventListener("focus", refreshNotifications);
+      window.removeEventListener("rentuki:data-changed", refreshNotifications);
     };
   }, []);
 
@@ -294,6 +282,13 @@ export default function AppLayout() {
       ) {
         setNotificationsOpen(false);
       }
+
+      if (
+        createMenuRef.current &&
+        !createMenuRef.current.contains(event.target)
+      ) {
+        setCreateOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -302,8 +297,6 @@ export default function AppLayout() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  const todayLabel = getTodayLabel();
 
   useEffect(() => {
     let active = true;
@@ -321,14 +314,6 @@ export default function AppLayout() {
     };
   }, []);
 
-  const currentPage =
-    Object.entries(pageTitles).find(([path]) =>
-      path === "/"
-        ? location.pathname === "/"
-        : location.pathname === path ||
-          location.pathname.startsWith(`${path}/`),
-    )?.[1] || "Dashboard";
-
   const logout = async () => {
     setProfileOpen(false);
     await signOut();
@@ -338,6 +323,7 @@ export default function AppLayout() {
   const goTo = (path) => {
     setProfileOpen(false);
     setNotificationsOpen(false);
+    setCreateOpen(false);
     navigate(path);
   };
 
@@ -345,30 +331,46 @@ export default function AppLayout() {
     <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
       <aside className={`sidebar ${open ? "open" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">
-            <Home size={19} strokeWidth={2.4} />
+          <div className="brand-identity">
+            <div className="brand-mark">
+              <Home size={19} strokeWidth={2.4} />
+            </div>
+
+            {!collapsed && (
+              <div className="brand-copy">
+                <strong>Rentuki</strong>
+              </div>
+            )}
           </div>
 
-          {!collapsed && (
-            <div className="brand-copy">
-              <strong>Rentuki</strong>
-              <small>Rental management</small>
-            </div>
-          )}
+          <div className="brand-actions">
+            <button
+              className="sidebar-collapse brand-collapse"
+              onClick={() => setCollapsed((value) => !value)}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <ChevronRight size={16} />
+              ) : (
+                <ChevronLeft size={16} />
+              )}
+            </button>
 
-          <button
-            className="mobile-close"
-            onClick={() => setOpen(false)}
-            aria-label="Close navigation"
-          >
-            <X size={19} />
-          </button>
+            <button
+              className="mobile-close"
+              onClick={() => setOpen(false)}
+              aria-label="Close navigation"
+            >
+              <X size={19} />
+            </button>
+          </div>
         </div>
 
         <nav className="sidebar-nav">
           <div className="nav-section-label">Workspace</div>
 
-          {nav.map(([to, label, Icon]) => (
+          {workspaceNav.map(([to, label, Icon]) => (
             <NavLink
               key={to}
               to={to}
@@ -380,16 +382,42 @@ export default function AppLayout() {
               {!collapsed && <span>{label}</span>}
             </NavLink>
           ))}
+
+          <div className="nav-divider" />
+          <div className="nav-section-label">Finance</div>
+
+          {financeNav.map(([to, label, Icon]) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => setOpen(false)}
+              title={collapsed ? label : undefined}
+            >
+              <Icon size={18} strokeWidth={2} />
+              {!collapsed && <span>{label}</span>}
+            </NavLink>
+          ))}
         </nav>
 
         <div className="sidebar-bottom">
-          <button
-            className="sidebar-collapse"
-            onClick={() => setCollapsed((value) => !value)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
-          </button>
+          <div className="sidebar-utility-nav">
+            <NavLink
+              to="/tenant-portal"
+              onClick={() => setOpen(false)}
+              title={collapsed ? "Tenant Portal" : undefined}
+            >
+              <ExternalLink size={17} strokeWidth={2} />
+              {!collapsed && <span>Tenant Portal</span>}
+            </NavLink>
+            <NavLink
+              to="/settings"
+              onClick={() => setOpen(false)}
+              title={collapsed ? "Settings" : undefined}
+            >
+              <Settings size={17} strokeWidth={2} />
+              {!collapsed && <span>Settings</span>}
+            </NavLink>
+          </div>
         </div>
       </aside>
 
@@ -411,25 +439,127 @@ export default function AppLayout() {
             >
               {open ? <X size={21} /> : <Menu size={21} />}
             </button>
-
-            <div className="topbar-title">
-              <span>Property Management</span>
-              <strong>{currentPage}</strong>
-            </div>
-
-            <div className="topbar-context" aria-label={`Today, ${todayLabel}`}>
-              <span>Today</span>
-              <strong>{todayLabel}</strong>
-            </div>
           </div>
 
           <div className="topbar-right">
+            <div className="topbar-menu-wrap create-menu-wrap" ref={createMenuRef}>
+              <button
+                type="button"
+                className={`create-action-btn ${createOpen ? "active" : ""}`}
+                aria-label="Create or add"
+                aria-expanded={createOpen}
+                title="Create or add"
+                onClick={() => {
+                  setCreateOpen((value) => !value);
+                  setNotificationsOpen(false);
+                  setProfileOpen(false);
+                }}
+              >
+                <Plus size={18} strokeWidth={2.3} />
+                <ChevronDown
+                  size={13}
+                  className={`create-action-chevron ${createOpen ? "open" : ""}`}
+                />
+              </button>
+
+              {createOpen && (
+                <div className="topbar-dropdown create-dropdown">
+                  <div className="create-dropdown-heading">
+                    <strong>Action</strong>
+                    <span>Create a new record</span>
+                  </div>
+
+                  <button type="button" onClick={() => goTo("/tenants?create=tenant")}>
+                    <span className="create-item-icon">
+                      <Users size={17} />
+                    </span>
+                    <span className="create-item-copy">
+                      <strong>Tenant</strong>
+                      <small>Create a new tenant record</small>
+                    </span>
+                    <ChevronRight size={15} />
+                  </button>
+
+                  <button type="button" onClick={() => goTo("/units?create=unit")}>
+                    <span className="create-item-icon">
+                      <Building2 size={17} />
+                    </span>
+                    <span className="create-item-copy">
+                      <strong>Unit</strong>
+                      <small>Add a new property unit</small>
+                    </span>
+                    <ChevronRight size={15} />
+                  </button>
+
+                  <div className="create-menu-group">
+                    <div className="create-menu-group-button">
+                      <span className="create-item-icon">
+                        <CreditCard size={17} />
+                      </span>
+                      <span className="create-item-copy">
+                        <strong>Payment</strong>
+                        <small>Record a payment</small>
+                      </span>
+                    </div>
+                    <div className="create-submenu">
+                      <button type="button" onClick={() => goTo("/payments?create=payment&type=rent")}>
+                        <span>Rent</span>
+                        <small>Monthly rent payment</small>
+                      </button>
+                      <button type="button" onClick={() => goTo("/payments?create=payment&type=deposit")}>
+                        <span>Deposit</span>
+                        <small>Security deposit</small>
+                      </button>
+                      <button type="button" onClick={() => goTo("/payments?create=payment&type=advance")}>
+                        <span>Advance</span>
+                        <small>Advance rent</small>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="create-menu-group">
+                    <div className="create-menu-group-button">
+                      <span className="create-item-icon">
+                        <Wrench size={17} />
+                      </span>
+                      <span className="create-item-copy">
+                        <strong>Maintenance & Expenses</strong>
+                        <small>Request / Record </small>
+                      </span>
+                    </div>
+                    <div className="create-submenu">
+                      <button type="button" onClick={() => goTo("/maintenance?create=maintenance")}>
+                        <span>Maintenance Request</span>
+                        <small>Report a repair or issue</small>
+                      </button>
+                      <button type="button" onClick={() => goTo("/maintenance?create=expense")}>
+                        <span>Expense</span>
+                        <small>Record an operating expense</small>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="button" onClick={() => goTo("/receipts?generate=1")}>
+                    <span className="create-item-icon">
+                      <Receipt size={17} />
+                    </span>
+                    <span className="create-item-copy">
+                      <strong>Generate Receipt</strong>
+                      <small>Generate a receipt from a payment</small>
+                    </span>
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="topbar-menu-wrap" ref={notificationMenuRef}>
               <button
                 className="topbar-icon-btn"
                 aria-label={`Notifications${notifications.length ? ` (${notifications.length})` : ""}`}
                 title="Notifications"
                 onClick={() => {
+                  refreshNotifications();
                   setNotificationsOpen((value) => !value);
                   setProfileOpen(false);
                 }}
@@ -502,7 +632,9 @@ export default function AppLayout() {
                         {notificationSummary.upcoming > 0 && (
                           <button
                             type="button"
-                            className={`notification-summary-pill info ${notificationFilter === "upcoming" ? "active" : ""}`}
+                            className={`notification-summary-pill upcoming ${
+                              notificationFilter === "upcoming" ? "active" : ""
+                            }`}
                             onClick={() => setNotificationFilter("upcoming")}
                           >
                             Upcoming ({notificationSummary.upcoming})
@@ -623,6 +755,10 @@ export default function AppLayout() {
                 <span className="profile-avatar">
                   {getInitials(profileName)}
                 </span>
+                <span className="profile-header-copy">
+                  <strong>{profileName}</strong>
+                  <small>Administrator</small>
+                </span>
                 <ChevronDown size={14} />
               </button>
               {profileOpen && (
@@ -631,12 +767,6 @@ export default function AppLayout() {
                     <strong>{profileName}</strong>
                     <small>Administrator</small>
                   </div>
-                  <button onClick={() => goTo("/tenant-portal")}>
-                    <ExternalLink size={16} /> Tenant Portal
-                  </button>
-                  <button onClick={() => goTo("/settings")}>
-                    <Settings size={16} /> Settings
-                  </button>
                   <button onClick={logout}>
                     <LogOut size={16} /> Sign out
                   </button>

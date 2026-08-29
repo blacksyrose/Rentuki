@@ -36,6 +36,20 @@ function remainingBalance(record, excludePaymentId = null) {
   return Math.max(Number(record?.amount_due || 0) - paid, 0);
 }
 
+function otherPaymentTotal(payments, tenancyId, paymentType, excludePaymentId = null) {
+  return (payments || []).reduce((sum, payment) => {
+    if (
+      payment.id === excludePaymentId ||
+      payment.tenancy_id !== tenancyId ||
+      payment.payment_type !== paymentType
+    ) {
+      return sum;
+    }
+
+    return sum + Number(payment.amount || 0);
+  }, 0);
+}
+
 function statusLabel(record) {
   const paid = paidAmount(record);
   const amountDue = Number(record?.amount_due || 0);
@@ -138,6 +152,26 @@ export default function Payments() {
     (tenancy) => tenancy.id === form.tenancy_id,
   );
 
+  const selectedRentBilling = (bill.data || []).find(
+    (record) => record.tenancy_id === form.tenancy_id,
+  );
+
+  const standaloneExpectedAmount = Number(
+    selectedTenancy?.monthly_rent || editingPayment?.tenancies?.monthly_rent || 0,
+  );
+  const standalonePaidBeforeThisPayment = otherPaymentTotal(
+    payments.data,
+    form.tenancy_id,
+    form.payment_type,
+    editingPayment?.id || null,
+  );
+  const standaloneTotalPaid =
+    standalonePaidBeforeThisPayment + Number(form.amount || 0);
+  const standaloneBalance = Math.max(
+    standaloneExpectedAmount - standaloneTotalPaid,
+    0,
+  );
+
   const resetForm = () => {
     setForm({
       payment_type: "rent",
@@ -188,6 +222,20 @@ export default function Payments() {
     });
     setOpen(true);
   };
+  useEffect(() => {
+    const create = searchParams.get("create");
+    const type = searchParams.get("type");
+
+    if (create !== "payment" || !["rent", "deposit", "advance"].includes(type)) {
+      return;
+    }
+
+    if (bill.loading) return;
+
+    openOtherPayment(type);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, bill.data, bill.loading]);
+
   useEffect(() => {
     const billingId = searchParams.get("billingId");
 
@@ -321,6 +369,12 @@ export default function Payments() {
       }
 
       if (editingPayment) {
+        if (type !== "rent" && standaloneTotalPaid > standaloneExpectedAmount) {
+          throw new Error(
+            `${type === "deposit" ? "Security deposit" : "Advance rent"} payments cannot exceed the expected amount of ${money(standaloneExpectedAmount)}.`,
+          );
+        }
+
         await updatePayment(editingPayment.id, {
           amount,
           payment_date: form.payment_date || null,
@@ -331,9 +385,19 @@ export default function Payments() {
 
         toast.success("Payment updated.");
       } else if (type === "rent") {
-        if (!selected) throw new Error("Billing record is required.");
+        const billingRecord =
+          selected ||
+          (bill.data || []).find(
+            (record) => record.tenancy_id === form.tenancy_id,
+          );
 
-        const billingMonth = String(selected.billing_month || "").slice(0, 7);
+        if (!billingRecord) {
+          throw new Error(
+            "No billing record exists for this tenancy for the selected month. Generate billing first.",
+          );
+        }
+
+        const billingMonth = String(billingRecord.billing_month || "").slice(0, 7);
         const paymentMonth = String(form.payment_date || "").slice(0, 7);
 
         if (billingMonth && paymentMonth && paymentMonth < billingMonth) {
@@ -342,7 +406,7 @@ export default function Payments() {
           );
         }
 
-        const maxAllowed = remainingBalance(selected);
+        const maxAllowed = remainingBalance(billingRecord);
 
         if (amount > maxAllowed) {
           throw new Error(
@@ -352,7 +416,7 @@ export default function Payments() {
 
         await recordPayment({
           paymentType: "rent",
-          billingRecord: selected,
+          billingRecord,
           tenantId: form.tenant_id,
           tenancyId: form.tenancy_id,
           amount,
@@ -363,6 +427,19 @@ export default function Payments() {
 
         toast.success("Rent payment recorded.");
       } else {
+        const expectedAmount = Number(selectedTenancy?.monthly_rent || 0);
+        const alreadyPaid = otherPaymentTotal(
+          payments.data,
+          form.tenancy_id,
+          type,
+        );
+
+        if (amount + alreadyPaid > expectedAmount) {
+          throw new Error(
+            `${type === "deposit" ? "Security deposit" : "Advance rent"} payments cannot exceed the expected amount of ${money(expectedAmount)}.`,
+          );
+        }
+
         await recordPayment({
           paymentType: type,
           billingRecord: null,
@@ -420,14 +497,6 @@ export default function Payments() {
           <button className="secondary" onClick={generate}>
             <RefreshCw size={16} />
             Generate billing
-          </button>
-
-          <button
-            className="secondary"
-            onClick={() => openOtherPayment("deposit")}
-          >
-            <Plus size={16} />
-            Other Payment
           </button>
         </div>
       </div>
@@ -563,8 +632,9 @@ export default function Payments() {
                 <th>Tenant</th>
                 <th>Unit</th>
                 <th>Type</th>
-                <th>Amount</th>
-                <th>Paid</th>
+                <th>Expected</th>
+                <th>This payment</th>
+                <th>Total paid</th>
                 <th>Balance</th>
                 <th>Date Paid</th>
                 <th>MOP</th>
@@ -581,6 +651,15 @@ export default function Payments() {
                 )
                 .map((payment) => {
                   const tenant = payment.tenants;
+                  const expectedAmount = Number(
+                    payment.tenancies?.monthly_rent || 0,
+                  );
+                  const totalPaid = otherPaymentTotal(
+                    payments.data,
+                    payment.tenancy_id,
+                    payment.payment_type,
+                  );
+                  const balance = Math.max(expectedAmount - totalPaid, 0);
                   const paymentType = String(payment.payment_type || "other")
                     .replace(/_/g, " ")
                     .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -602,10 +681,11 @@ export default function Payments() {
                           {paymentType}
                         </span>
                       </td>
+                      <td>{money(expectedAmount)}</td>
                       <td>{money(payment.amount)}</td>
-                      <td>{money(payment.amount)}</td>
+                      <td>{money(totalPaid)}</td>
                       <td>
-                        <strong>{money(0)}</strong>
+                        <strong>{money(balance)}</strong>
                       </td>
                       <td>{payment.payment_date || "—"}</td>
                       <td>
@@ -638,7 +718,7 @@ export default function Payments() {
                     String(payment.payment_date || "").startsWith(month),
                 ) && (
                   <tr>
-                    <td colSpan="10">
+                    <td colSpan="11">
                       <EmptyState
                         icon={Plus}
                         title="No deposits or advance rent yet"
@@ -689,20 +769,33 @@ export default function Payments() {
 
           {form.payment_type === "rent" && selected ? (
             <div className="form-note full-span">
-              Remaining balance:{" "}
+              Tenant:{" "}
+              <strong>
+                {selected.tenancies?.tenants?.first_name || "—"}{" "}
+                {selected.tenancies?.tenants?.last_name || ""}
+              </strong>
+              {" · "}Unit {selected.tenancies?.units?.unit_number || "—"}
+              {" · "}Balance{" "}
               <strong>
                 {money(remainingBalance(selected, editingPayment?.id || null))}
               </strong>
             </div>
+          ) : form.payment_type === "rent" && selectedRentBilling ? (
+            <div className="form-note full-span">
+              Current month balance:{" "}
+              <strong>{money(remainingBalance(selectedRentBilling))}</strong>
+            </div>
+          ) : form.payment_type === "rent" ? (
+            <div className="form-note full-span">
+              Select a tenant and active tenancy to record this month's rent.
+            </div>
           ) : (
             <div className="form-note full-span">
-              {form.payment_type === "deposit"
-                ? "Recorded separately from monthly rent billing."
-                : "Recorded separately from monthly rent billing."}
+              Deposit and advance rent are each expected to equal one month of rent.
             </div>
           )}
 
-          {form.payment_type !== "rent" && !editingPayment && (
+          {!editingPayment && !selected && (
             <>
               <label className="full-span">
                 Tenant
@@ -714,6 +807,7 @@ export default function Payments() {
                       ...form,
                       tenant_id: event.target.value,
                       tenancy_id: "",
+                      amount: form.payment_type === "rent" ? "" : form.amount,
                     });
                   }}
                 >
@@ -733,12 +827,21 @@ export default function Payments() {
                 <select
                   required
                   value={form.tenancy_id}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const tenancyId = event.target.value;
+                    const billingRecord = (bill.data || []).find(
+                      (record) => record.tenancy_id === tenancyId,
+                    );
+
                     setForm({
                       ...form,
-                      tenancy_id: event.target.value,
-                    })
-                  }
+                      tenancy_id: tenancyId,
+                      amount:
+                        form.payment_type === "rent" && billingRecord
+                          ? remainingBalance(billingRecord)
+                          : form.amount,
+                    });
+                  }}
                   disabled={!form.tenant_id}
                 >
                   <option value="">Select active tenancy</option>
@@ -765,8 +868,39 @@ export default function Payments() {
             </div>
           )}
 
+          {form.payment_type !== "rent" && (
+            <>
+              <label>
+                Expected amount
+                <input
+                  type="text"
+                  value={form.tenancy_id ? money(standaloneExpectedAmount) : "Select a tenancy"}
+                  readOnly
+                />
+              </label>
+
+              <label>
+                Total paid
+                <input
+                  type="text"
+                  value={form.tenancy_id ? money(standaloneTotalPaid) : "Select a tenancy"}
+                  readOnly
+                />
+              </label>
+
+              <label>
+                Balance
+                <input
+                  type="text"
+                  value={form.tenancy_id ? money(standaloneBalance) : "Select a tenancy"}
+                  readOnly
+                />
+              </label>
+            </>
+          )}
+
           <label>
-            Amount
+            {form.payment_type === "rent" ? "Amount" : "This payment"}
             <input
               type="number"
               min="0.01"

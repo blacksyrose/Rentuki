@@ -5,6 +5,7 @@ import {
   CircleDollarSign,
   Clock3,
   Download,
+  Eye,
   KeyRound,
   LogOut,
   ReceiptText,
@@ -17,102 +18,6 @@ import { db } from "../services/db";
 import { currentMonth, dateLabel, money } from "../lib/utils";
 
 const STORAGE_KEY = "rentuki_tenant_portal_key";
-
-const previewSummary = {
-  property_name: "Rental Management System",
-  property_address:
-    "13 B Saging St. Talanay, Batasan Hills, Quezon City, Metro Manila, Philippines, 1126",
-  tenant: {
-    first_name: "Khate",
-    last_name: "Sucatron",
-  },
-  current_tenancy: {
-    unit_number: "7",
-    monthly_rent: 4000,
-    payment_due_day: 15,
-    start_date: "2026-08-10",
-  },
-  billing: {
-    id: "preview-billing-2026-08",
-    tenancy_id: "preview-tenancy-1",
-    billing_month: "2026-08-01",
-    due_date: "2026-08-15",
-    amount_due: 4000,
-    paid_amount: 4000,
-    balance: 0,
-    status: "paid",
-  },
-  billing_history: [
-    {
-      id: "preview-billing-2026-08",
-      tenancy_id: "preview-tenancy-1",
-      billing_month: "2026-08-01",
-      due_date: "2026-08-15",
-      amount_due: 4000,
-      paid_amount: 4000,
-      balance: 0,
-      status: "paid",
-      unit_number: "7",
-      monthly_rent: 4000,
-      payment_methods: ["Cash"],
-      latest_payment_date: "2026-08-20",
-    },
-    {
-      id: "preview-billing-2026-07",
-      tenancy_id: "preview-tenancy-1",
-      billing_month: "2026-07-01",
-      due_date: "2026-07-15",
-      amount_due: 4000,
-      paid_amount: 4000,
-      balance: 0,
-      status: "paid",
-      unit_number: "5",
-      monthly_rent: 4000,
-      payment_methods: ["Cash"],
-      latest_payment_date: "2026-07-17",
-    },
-    {
-      id: "preview-billing-2026-06",
-      tenancy_id: "preview-tenancy-1",
-      billing_month: "2026-06-01",
-      due_date: "2026-06-15",
-      amount_due: 4300,
-      paid_amount: 4000,
-      balance: 300,
-      status: "partially_paid",
-      unit_number: "5",
-      monthly_rent: 4300,
-      payment_methods: ["Cash"],
-      latest_payment_date: "2026-06-17",
-    },
-    {
-      id: "preview-billing-2026-05",
-      tenancy_id: "preview-tenancy-1",
-      billing_month: "2026-05-01",
-      due_date: "2026-05-15",
-      amount_due: 4300,
-      paid_amount: 0,
-      balance: 4300,
-      status: "overdue",
-      unit_number: "5",
-      monthly_rent: 4300,
-      payment_methods: [],
-      latest_payment_date: null,
-    },
-  ],
-  payments: [],
-  unit_history: [
-    {
-      id: "preview-tenancy-1",
-      unit_number: "7",
-      start_date: "2026-08-10",
-      monthly_rent: 4000,
-      status: "active",
-    },
-  ],
-  maintenance: [],
-  expenses: [],
-};
 
 function monthLabel(value) {
   const date = new Date(`${value}-01T00:00:00`);
@@ -442,15 +347,14 @@ function drawReceiptCheckbox(doc, x, y, label, checked, green, muted) {
 
   doc.text(label, x + 6, y + 2.65);
 }
-/*
- * This intentionally mirrors the PDF layout used by the admin Receipts page.
- * The tenant portal only supplies the selected tenant/payment data.
- */
+
 async function downloadTenantReceipt(
   payment,
   tenant,
   propertyHeader,
   payments,
+  standaloneExpectedAmount = 0,
+  previewWindow = null,
 ) {
   try {
     const tenantName =
@@ -492,7 +396,36 @@ async function downloadTenantReceipt(
             .reduce((sum, item) => sum + Number(item.amount || 0), 0)
         : Number(payment.amount || 0);
 
-    const balance = isRent ? Math.max(amountDue - paidThroughPayment, 0) : 0;
+    const paymentType = String(
+      payment?.payment_type || payment?.type || "rent",
+    )
+      .trim()
+      .toLowerCase();
+    const standalonePayments = (payments || [])
+      .filter(
+        (item) =>
+          !isRent &&
+          item.tenancy_id === payment.tenancy_id &&
+          String(item?.payment_type || item?.type || "rent")
+            .trim()
+            .toLowerCase() === paymentType,
+      )
+      .sort(compareTenantPayments);
+    const standalonePaymentIndex = standalonePayments.findIndex(
+      (item) => item.id === payment.id,
+    );
+    const standalonePaidThroughPayment =
+      standalonePaymentIndex >= 0
+        ? standalonePayments
+            .slice(0, standalonePaymentIndex + 1)
+            .reduce((sum, item) => sum + Number(item.amount || 0), 0)
+        : Number(payment.amount || 0);
+    const balance = isRent
+      ? Math.max(amountDue - paidThroughPayment, 0)
+      : Math.max(
+          Number(standaloneExpectedAmount || 0) - standalonePaidThroughPayment,
+          0,
+        );
 
     const receiptNumber = getTenantReceiptNumber(payment, payments);
 
@@ -506,19 +439,6 @@ async function downloadTenantReceipt(
 
     const paymentMethod = paymentMethodClass(payment?.payment_method);
 
-    /*
-     * Use the SAME property source as the Admin > Receipts page.
-     *
-     * Admin Receipts does:
-     *   const property = properties?.[0] || {};
-     *   const header = property.address
-     *     ? property.address
-     *     : property.name || "Rental Property";
-     *
-     * The tenant summary RPC does not always include property_address,
-     * which is why relying only on portalSummary.property_address can
-     * result in "Property address not recorded".
-     */
     let property = {};
 
     try {
@@ -554,18 +474,15 @@ async function downloadTenantReceipt(
     doc.addFileToVFS("DejaVuSans.ttf", fontBase64);
     doc.addFont("DejaVuSans.ttf", "DejaVuSans", "normal");
 
-    // Exact colors used by Admin > Receipts.
     const green = [111, 145, 119];
     const darkGreen = [86, 119, 94];
     const text = [45, 45, 45];
     const muted = [105, 105, 105];
 
-    /* Outer border — same as Admin Receipts */
     doc.setDrawColor(...green);
     doc.setLineWidth(0.45);
     doc.rect(8, 8, RECEIPT_WIDTH - 16, RECEIPT_HEIGHT - 16);
 
-    /* Header — same position, size, and spacing as Admin Receipts */
     doc.setFillColor(...green);
     doc.rect(14, 13, RECEIPT_WIDTH - 28, 18, "F");
 
@@ -577,11 +494,6 @@ async function downloadTenantReceipt(
       align: "center",
     });
 
-    /*
-     * IMPORTANT:
-     * This intentionally uses property.address first, exactly like
-     * the Admin Receipts PDF. The property name is only a fallback.
-     */
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.1);
 
@@ -659,17 +571,16 @@ async function downloadTenantReceipt(
     drawReceiptField(
       doc,
       "Balance:",
-      isRent ? money(balance) : "—",
+      money(balance),
       rightX,
       56,
       valueOffset,
       70,
       green,
       text,
-      isRent,
+      true,
     );
 
-    /* Payment method — exact Admin Receipts positions */
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.2);
     doc.setTextColor(...darkGreen);
@@ -737,11 +648,72 @@ async function downloadTenantReceipt(
       payment?.payment_date || payment?.billing_records?.billing_month,
     );
 
-    doc.save(`Receipt_${safeDate}_${safeTenant}.pdf`);
+    if (previewWindow) {
+      previewWindow.location.href = doc.output("bloburl");
+    } else {
+      doc.save(`Receipt_${safeDate}_${safeTenant}.pdf`);
+    }
   } catch (error) {
     console.error(error);
     throw error;
   }
+}
+
+function TenantReceiptActions({
+  payment,
+  tenant,
+  propertyHeader,
+  payments,
+  expectedAmount,
+}) {
+  const receiptDate = payment?.payment_date || payment?.billing_month || "";
+  const receiptLabel = receiptDate ? dateLabel(receiptDate) : "this payment";
+
+  return (
+    <div className="portal-receipt-actions">
+      <button
+        type="button"
+        className="portal-view-receipt"
+        title="View receipt"
+        aria-label={`View receipt for ${receiptLabel}`}
+        onClick={() => {
+          const receiptWindow = window.open("", "_blank");
+
+          if (!receiptWindow) return;
+
+          receiptWindow.document.title = "Preparing receipt…";
+          downloadTenantReceipt(
+            payment,
+            tenant,
+            propertyHeader,
+            payments,
+            expectedAmount,
+            receiptWindow,
+          ).catch(() => receiptWindow.close());
+        }}
+      >
+        <Eye size={14} />
+      </button>
+
+      <button
+        type="button"
+        className="portal-download-receipt"
+        title="Download receipt"
+        aria-label={`Download receipt for ${receiptLabel}`}
+        onClick={() =>
+          downloadTenantReceipt(
+            payment,
+            tenant,
+            propertyHeader,
+            payments,
+            expectedAmount,
+          )
+        }
+      >
+        <Download size={14} />
+      </button>
+    </div>
+  );
 }
 
 export default function TenantPortal() {
@@ -775,9 +747,7 @@ export default function TenantPortal() {
     setError("");
 
     try {
-      // The tenant portal RPC now returns the tenant's complete billing history
-      // directly from billing_records, including paid amount, balance, status,
-      // unit, payment methods, and latest payment date.
+
       const data = await db.tenantPortal.summary(normalized, currentMonth());
 
       setSummary(data);
@@ -814,7 +784,6 @@ export default function TenantPortal() {
 
     loadSummary(accessKey);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessKey, isPreview]);
 
   const signOut = () => {
@@ -941,7 +910,7 @@ export default function TenantPortal() {
     [payments],
   );
 
-  // Billing records are now the source of truth for rental balances/statuses.
+  // Billing records are now the source data for rental balances/statuses.
   const billingHistory = useMemo(
     () =>
       (Array.isArray(portalSummary?.billing_history)
@@ -996,7 +965,78 @@ export default function TenantPortal() {
     ? getBillingRecordStatus(currentBilling, currentBilling.paid_amount)
     : "Upcoming";
 
-  const paymentRows = billingHistory;
+  const paymentRows = useMemo(() => {
+    const billingRows = billingHistory.map((record) => ({
+      ...record,
+      payment_type: "rent",
+      payment_date: record.latest_payment_date,
+      row_kind: "billing",
+    }));
+
+    const standalonePayments = payments.filter(
+      (payment) =>
+        String(payment?.payment_type || payment?.type || "rent")
+          .trim()
+          .toLowerCase() !== "rent",
+    );
+
+    const tenancyMonthlyRents = new Map(
+      history.map((item) => [
+        String(item.id || ""),
+        Number(item.monthly_rent || 0),
+      ]),
+    );
+    const standaloneTotals = standalonePayments.reduce((totals, payment) => {
+      const paymentType = String(
+        payment?.payment_type || payment?.type || "",
+      )
+        .trim()
+        .toLowerCase();
+      const key = `${payment.tenancy_id || ""}:${paymentType}`;
+      totals.set(key, (totals.get(key) || 0) + Number(payment.amount || 0));
+      return totals;
+    }, new Map());
+
+    const otherPaymentRows = standalonePayments
+      .map((payment) => {
+        const paymentType = String(
+          payment?.payment_type || payment?.type || "",
+        )
+          .trim()
+          .toLowerCase();
+        const expectedAmount =
+          tenancyMonthlyRents.get(String(payment.tenancy_id || "")) ||
+          Number(tenancy?.monthly_rent || 0);
+        const totalPaid =
+          standaloneTotals.get(`${payment.tenancy_id || ""}:${paymentType}`) ||
+          0;
+
+        return {
+          id: `payment-${payment.id}`,
+          payment_type: payment.payment_type || payment.type,
+          payment_date: payment.payment_date,
+          billing_month: payment.billing_month,
+          unit_number: payment.unit_number,
+          amount_due: expectedAmount,
+          paid_amount: totalPaid,
+          balance: Math.max(expectedAmount - totalPaid, 0),
+          payment_methods: payment.payment_method
+            ? [payment.payment_method]
+            : [],
+          latest_payment: payment,
+          row_kind: "standalone",
+        };
+      });
+
+    return [...billingRows, ...otherPaymentRows].sort((first, second) => {
+      const secondDate = String(
+        second.payment_date || second.billing_month || "",
+      );
+      const firstDate = String(first.payment_date || first.billing_month || "");
+
+      return secondDate.localeCompare(firstDate);
+    });
+  }, [billingHistory, history, payments, tenancy?.monthly_rent]);
 
   if (!isPreview && (!accessKey || !summary)) {
     return (
@@ -1214,7 +1254,7 @@ export default function TenantPortal() {
             <div>
               <h2>Payment History</h2>
               <p>
-                Monthly rent billing, payments, balances, statuses, and
+                Rent, advance, and deposit payments, balances, statuses, and
                 receipts.
               </p>
             </div>
@@ -1227,6 +1267,7 @@ export default function TenantPortal() {
                   <th>Payment date</th>
                   <th>Rent period</th>
                   <th>Unit</th>
+                  <th>Type</th>
                   <th>Amount due</th>
                   <th>Paid</th>
                   <th>Balance</th>
@@ -1238,23 +1279,29 @@ export default function TenantPortal() {
 
               <tbody>
                 {paymentRows.map((record) => {
-                  const rowStatus = getBillingRecordStatus(
-                    record,
-                    record.paid_amount,
-                  );
+                  const isStandalonePayment = record.row_kind === "standalone";
+                  const rowStatus = isStandalonePayment
+                    ? record.balance <= 0
+                      ? "Paid"
+                      : record.paid_amount > 0
+                        ? "Partially Paid"
+                        : "Due"
+                    : getBillingRecordStatus(record, record.paid_amount);
 
-                  const latestPayment = payments
-                    .filter(
-                      (payment) =>
-                        record?.id &&
-                        payment?.billing_record_id &&
-                        String(payment.billing_record_id) === String(record.id),
-                    )
-                    .sort((a, b) =>
-                      String(b.payment_date || "").localeCompare(
-                        String(a.payment_date || ""),
-                      ),
-                    )[0];
+                  const receiptPayments = isStandalonePayment
+                    ? [record.latest_payment].filter(Boolean)
+                    : payments
+                        .filter(
+                          (payment) =>
+                            record?.id &&
+                            payment?.billing_record_id &&
+                            String(payment.billing_record_id) === String(record.id),
+                        )
+                        .sort((a, b) =>
+                          String(b.payment_date || "").localeCompare(
+                            String(a.payment_date || ""),
+                          ),
+                        );
 
                   const methods = Array.isArray(record.payment_methods)
                     ? record.payment_methods.filter(Boolean)
@@ -1263,8 +1310,10 @@ export default function TenantPortal() {
                   return (
                     <tr key={record.id}>
                       <td>
-                        {record.latest_payment_date
-                          ? dateLabel(record.latest_payment_date)
+                        {record.latest_payment_date || record.payment_date
+                          ? dateLabel(
+                              record.latest_payment_date || record.payment_date,
+                            )
                           : "—"}
                       </td>
 
@@ -1278,6 +1327,16 @@ export default function TenantPortal() {
                         {record.unit_number
                           ? `Unit ${record.unit_number}`
                           : "—"}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`portal-payment-pill type ${paymentTypeClass(
+                            record.payment_type,
+                          )}`}
+                        >
+                          {formatPaymentType(record.payment_type)}
+                        </span>
                       </td>
 
                       <td>
@@ -1330,25 +1389,34 @@ export default function TenantPortal() {
                       </td>
 
                       <td>
-                        {latestPayment ? (
-                          <button
-                            type="button"
-                            className="portal-download-receipt"
-                            title="Download receipt"
-                            aria-label={`Download receipt for ${monthLabel(
-                              String(record.billing_month).slice(0, 7),
-                            )}`}
-                            onClick={() =>
-                              downloadTenantReceipt(
-                                latestPayment,
-                                tenant,
-                                propertyHeader,
-                                payments,
-                              )
-                            }
-                          >
-                            <Download size={14} />
-                          </button>
+                        {receiptPayments.length === 1 ? (
+                          <TenantReceiptActions
+                            payment={receiptPayments[0]}
+                            tenant={tenant}
+                            propertyHeader={propertyHeader}
+                            payments={payments}
+                            expectedAmount={record.amount_due}
+                          />
+                        ) : receiptPayments.length > 1 ? (
+                          <details className="portal-receipt-list">
+                            <summary>Receipts ({receiptPayments.length})</summary>
+                            <div className="portal-receipt-list-items">
+                              {receiptPayments.map((payment) => (
+                                <div className="portal-receipt-list-item" key={payment.id}>
+                                  <span>
+                                    {dateLabel(payment.payment_date)} · {money(payment.amount)}
+                                  </span>
+                                  <TenantReceiptActions
+                                    payment={payment}
+                                    tenant={tenant}
+                                    propertyHeader={propertyHeader}
+                                    payments={payments}
+                                    expectedAmount={record.amount_due}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </details>
                         ) : (
                           "—"
                         )}
