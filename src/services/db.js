@@ -410,9 +410,6 @@ export const db = {
           }),
       ),
 
-    create: (payload) =>
-      unwrap(supabase.from("payments").insert(payload).select().single()),
-
     update: (id, payload) =>
       unwrap(
         supabase
