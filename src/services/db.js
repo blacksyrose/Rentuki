@@ -588,70 +588,21 @@ export async function recordPayment({
         "A billing record is required for a monthly rent payment.",
       );
     }
-
-    if (billingRecord.tenancy_id !== tenancyId) {
-      throw new Error(
-        "The selected tenancy does not match the billing record.",
-      );
-    }
-
-    const existingPaid = (billingRecord.payments || []).reduce(
-      (sum, payment) => sum + Number(payment.amount || 0),
-      0,
-    );
-
-    const amountDue = Number(billingRecord.amount_due || 0);
-    const balance = Math.max(amountDue - existingPaid, 0);
-
-    if (paymentAmount > balance) {
-      throw new Error(
-        `Payment exceeds the remaining balance of ${balance.toFixed(2)}.`,
-      );
-    }
-  } else {
-    const tenancy = await unwrap(
-      supabase
-        .from("tenancies")
-        .select("monthly_rent")
-        .eq("id", tenancyId)
-        .single(),
-    );
-    const priorPayments = await unwrap(
-      supabase
-        .from("payments")
-        .select("amount")
-        .eq("tenancy_id", tenancyId)
-        .eq("payment_type", type),
-    );
-    const priorPaid = (priorPayments || []).reduce(
-      (sum, payment) => sum + Number(payment.amount || 0),
-      0,
-    );
-    const expectedAmount = Number(tenancy.monthly_rent || 0);
-
-    if (paymentAmount + priorPaid > expectedAmount) {
-      throw new Error(
-        `${type === "deposit" ? "Security deposit" : "Advance rent"} cannot exceed one month's rent of ${expectedAmount.toFixed(2)}.`,
-      );
-    }
   }
 
-  /*
-   * Advance rent and security deposits are standalone
-   * tenant/tenancy payments. They intentionally have
-   * no billing_record_id.
-   */
-  return db.payments.create({
-    billing_record_id: type === "rent" ? billingRecord.id : null,
-    tenant_id: tenantId,
-    tenancy_id: tenancyId,
-    payment_type: type,
-    amount: paymentAmount,
-    payment_date: paymentDate || null,
-    payment_method: normalizePaymentMethod(paymentMethod),
-    reference_number: cleanText(referenceNumber),
-    notes: cleanText(notes),
-  });
+  return unwrap(
+    supabase.rpc("record_payment", {
+      p_tenant_id: tenantId,
+      p_tenancy_id: tenancyId,
+      p_amount: paymentAmount,
+      p_payment_type: type,
+      p_billing_record_id: type === "rent" ? billingRecord.id : null,
+      p_payment_date: paymentDate || null,
+      p_payment_method: normalizePaymentMethod(paymentMethod),
+      p_reference_number: cleanText(referenceNumber),
+      p_notes: cleanText(notes),
+    }),
+  );
 }
 
 /*
@@ -882,33 +833,104 @@ export async function generateBillingForActiveTenancies(
 
   const existing = await db.billing.list(billingMonth);
 
-  const existingIds = new Set(
-    (existing || []).map((record) => record.tenancy_id),
+  const existingByTenancy = new Map(
+    (existing || []).map((record) => [record.tenancy_id, record]),
   );
 
-  const payloads = eligible
-    .filter((tenancy) => !existingIds.has(tenancy.id))
-    .map((tenancy) => ({
-      tenancy_id: tenancy.id,
+  const payloads = [];
+  const updated = [];
 
-      /*
-       * IMPORTANT:
-       * billing_month is DATE.
-       */
-      billing_month: monthStartDate(billingMonth),
+  for (const tenancy of eligible) {
+    const currentRent = Number(tenancy.monthly_rent || 0);
 
-      due_date: billingDueDate(billingMonth, tenancy.payment_due_day),
+    const existingBilling = existingByTenancy.get(tenancy.id);
 
-      amount_due: Number(tenancy.monthly_rent || 0),
+    /*
+     * No billing record yet:
+     * create one using the tenancy's current monthly rent.
+     */
+    if (!existingBilling) {
+      payloads.push({
+        tenancy_id: tenancy.id,
+        billing_month: monthStartDate(billingMonth),
+        due_date: billingDueDate(billingMonth, tenancy.payment_due_day),
+        amount_due: currentRent,
+        status: "upcoming",
+      });
 
-      status: "upcoming",
-    }));
+      continue;
+    }
 
-  if (!payloads.length) {
-    return [];
+    /*
+     * Existing billing:
+     *
+     * Calculate how much has already been paid.
+     */
+    const paid = (existingBilling.payments || []).reduce(
+      (sum, payment) => sum + Number(payment.amount || 0),
+      0,
+    );
+
+    const oldAmountDue = Number(existingBilling.amount_due || 0);
+
+    /*
+     * Do NOT automatically modify waived billing.
+     */
+    if (existingBilling.status === "waived") {
+      updated.push(existingBilling);
+      continue;
+    }
+
+    /*
+     * If the billing has already been fully paid,
+     * preserve the historical billing amount.
+     */
+    if (paid >= oldAmountDue && oldAmountDue > 0) {
+      updated.push(existingBilling);
+      continue;
+    }
+
+    /*
+     * Existing billing is unpaid or partially paid.
+     *
+     * Update it to the tenancy's current monthly rent.
+     */
+    if (oldAmountDue !== currentRent) {
+      const updatedBilling = await unwrap(
+        supabase
+          .from("billing_records")
+          .update({
+            amount_due: currentRent,
+            due_date: billingDueDate(billingMonth, tenancy.payment_due_day),
+          })
+          .eq("id", existingBilling.id)
+          .select()
+          .single(),
+      );
+
+      updated.push(updatedBilling);
+    } else {
+      updated.push(existingBilling);
+    }
   }
 
-  return unwrap(supabase.from("billing_records").insert(payloads).select());
+  /*
+   * Create billing records for tenancies that don't have one yet.
+   */
+  let created = [];
+
+  if (payloads.length) {
+    created = await unwrap(
+      supabase.from("billing_records").insert(payloads).select(),
+    );
+  }
+
+  /*
+   * Recalculate statuses after creating/updating billing.
+   */
+  await syncBillingStatuses(billingMonth);
+
+  return [...updated, ...(created || [])];
 }
 
 export async function syncBillingStatuses(month = currentMonth()) {
@@ -1129,12 +1151,11 @@ async function findTenancyForPayment(tenantId, paymentDate, row) {
         .from("tenancies")
         .select("*")
         .eq("id", row.tenancy_id)
+        .eq("tenant_id", tenantId)
         .maybeSingle(),
     );
 
-    if (explicit) {
-      return explicit;
-    }
+    return explicit;
   }
 
   const tenancies = await unwrap(
@@ -1327,36 +1348,18 @@ export async function importPayments(rows = []) {
       }
 
       const payment = await unwrap(
-        supabase
-          .from("payments")
-          .insert({
-            /*
-             * Rent:
-             *   billing record ID
-             *
-             * Advance/deposit:
-             *   NULL
-             */
-            billing_record_id: paymentType === "rent" ? billing.id : null,
-
-            tenant_id: tenant.id,
-
-            tenancy_id: tenancy.id,
-
-            payment_type: paymentType,
-
-            amount,
-
-            payment_date: paymentDate,
-
-            payment_method: paymentMethod,
-
-            reference_number: reference,
-
-            notes,
-          })
-          .select()
-          .single(),
+        supabase.rpc("record_payment", {
+          p_tenant_id: tenant.id,
+          p_tenancy_id: tenancy.id,
+          p_amount: amount,
+          p_payment_type: paymentType,
+          p_billing_record_id:
+            paymentType === "rent" ? billing.id : null,
+          p_payment_date: paymentDate,
+          p_payment_method: paymentMethod,
+          p_reference_number: reference,
+          p_notes: notes,
+        }),
       );
 
       imported.push(payment);
