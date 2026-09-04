@@ -362,7 +362,7 @@ export const db = {
         supabase
           .from("billing_records")
           .select(
-            "*, tenancies(tenant_id,unit_id,start_date,end_date,monthly_rent,payment_due_day,tenants(first_name,last_name),units(unit_number,property_id)), payments(*)",
+            "*, tenancies(tenant_id,unit_id,start_date,end_date,monthly_rent,payment_due_day,tenants(first_name,last_name),units(unit_number,property_id)), payments!payments_billing_record_id_fkey(*)",
           )
           .eq("billing_month", monthStart)
           .order("due_date"),
@@ -376,7 +376,7 @@ export const db = {
         supabase
           .from("billing_records")
           .select(
-            "*, tenancies(tenant_id,unit_id,start_date,end_date,monthly_rent,payment_due_day,tenants(first_name,last_name),units(unit_number,property_id)), payments(*)",
+            "*, tenancies(tenant_id,unit_id,start_date,end_date,monthly_rent,payment_due_day,tenants(first_name,last_name),units(unit_number,property_id)), payments!payments_billing_record_id_fkey(*)",
           )
           .order("due_date"),
       );
