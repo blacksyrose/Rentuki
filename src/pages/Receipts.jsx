@@ -645,14 +645,9 @@ async function generateReceipt({ payment, payments, properties, toast }) {
       align: "center",
     });
 
-    const safeTenant =
-      tenantName.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "") || "Tenant";
+    const receiptFileName = getReceiptFileName(payment, tenantName);
 
-    const safeDate = formatReceiptDate(
-      payment.payment_date || payment.billing_records?.billing_month,
-    );
-
-    doc.save(`Receipt_${safeDate}_${safeTenant}.pdf`);
+    doc.save(`${receiptFileName}.pdf`);
 
     toast.success("Receipt PDF created.");
   } catch (error) {
@@ -687,6 +682,18 @@ function getReceiptNumber(payment, payments = []) {
   const unitNumber = payment?.tenancies?.units?.unit_number || "-";
 
   return `RCPT-${formatReceiptMonth(month)}${unitNumber}-${sequence}`;
+}
+
+function getReceiptFileName(payment, tenantName) {
+  const receiptNumber = getReceiptNumber(payment);
+  const name =
+    payment?.tenants?.last_name ||
+    payment?.tenants?.first_name ||
+    tenantName ||
+    "Tenant";
+  const safeName = String(name).replace(/[^a-z0-9]/gi, "") || "Tenant";
+
+  return `${receiptNumber}_${safeName}`;
 }
 
 function receiptDateLabel(payment) {

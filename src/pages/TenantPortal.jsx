@@ -214,6 +214,8 @@ function compareTenantPayments(first, second) {
 }
 
 function getTenantReceiptNumber(payment, payments = []) {
+  if (payment?.receipt_number) return payment.receipt_number;
+
   const month = getTenantPaymentMonth(payment);
 
   const paymentGroup = (payments || [])
@@ -233,6 +235,14 @@ function getTenantReceiptNumber(payment, payments = []) {
     payment?.unit_number || payment?.tenancies?.units?.unit_number || "-";
 
   return `RCPT-${formatReceiptMonth(month)}${unitNumber}-${sequence}`;
+}
+
+function getTenantReceiptFileName(payment, tenant) {
+  const receiptNumber = getTenantReceiptNumber(payment);
+  const name = tenant?.last_name || tenant?.first_name || "Tenant";
+  const safeName = String(name).replace(/[^a-z0-9]/gi, "") || "Tenant";
+
+  return `${receiptNumber}_${safeName}`;
 }
 
 function formatReceiptDate(value) {
@@ -651,7 +661,7 @@ async function downloadTenantReceipt(
     if (previewWindow) {
       previewWindow.location.href = doc.output("bloburl");
     } else {
-      doc.save(`Receipt_${safeDate}_${safeTenant}.pdf`);
+      doc.save(`${getTenantReceiptFileName(payment, tenant)}.pdf`);
     }
   } catch (error) {
     console.error(error);
