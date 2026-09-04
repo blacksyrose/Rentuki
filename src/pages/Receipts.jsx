@@ -667,6 +667,8 @@ async function generateReceipt({ payment, payments, properties, toast }) {
 /* ========================================================================== */
 
 function getReceiptNumber(payment, payments = []) {
+  if (payment?.receipt_number) return payment.receipt_number;
+
   const month = getPaymentMonth(payment);
   const paymentGroup = (payments || [])
     .filter((item) => {
