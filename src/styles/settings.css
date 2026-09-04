@@ -170,7 +170,6 @@
 }
 
 @media (max-width: 800px) {
-
   .tenant-access-row {
     grid-template-columns: 1fr;
   }
@@ -178,11 +177,9 @@
   .tenant-access-actions {
     justify-content: flex-start;
   }
-
 }
 
 @media (max-width: 520px) {
-
   .tenant-access-row {
     gap: 8px;
   }
@@ -191,7 +188,6 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-
 }
 
 .tenant-access-key-wrap {
@@ -226,7 +222,6 @@
 }
 
 @media (max-width: 760px) {
-
   .tenant-access-row {
     grid-template-columns: 1fr;
   }
@@ -239,11 +234,9 @@
     justify-content: flex-start;
     flex-wrap: wrap;
   }
-
 }
 
 @media (max-width: 760px) {
-
   .tenant-access-settings {
     overflow: visible;
   }
@@ -284,11 +277,9 @@
     background: #7d978b;
     border-radius: 999px;
   }
-
 }
 
 @media (max-width: 760px) {
-
   .tenant-access-list {
     display: block;
     width: 100%;
@@ -311,7 +302,6 @@
     background: #aabbb1;
     border-radius: 999px;
   }
-
 }
 
 .stat-icon.success {
@@ -389,7 +379,6 @@
 }
 
 @media (max-width: 800px) {
-
   .report-grid {
     grid-template-columns: 1fr;
   }
@@ -398,11 +387,9 @@
     align-items: flex-start;
     flex-direction: column;
   }
-
 }
 
 @media (max-width: 760px) {
-
   .tenant-access-row,
   .tenant-access-key-wrap,
   .tenant-access-actions {
@@ -418,7 +405,6 @@
   .tenant-access-actions .small-btn {
     flex: 0 1 auto;
   }
-
 }
 
 html,
@@ -440,12 +426,10 @@ body,
 }
 
 @media (max-width: 760px) {
-
   .tenant-access-row {
     min-width: 560px;
     overflow: visible;
   }
-
 }
 
 .danger-outline {
@@ -574,7 +558,6 @@ body,
 }
 
 @media (max-width: 800px) {
-
   .tenant-access-row {
     grid-template-columns: 1fr;
   }
@@ -582,11 +565,9 @@ body,
   .tenant-access-actions {
     justify-content: flex-start;
   }
-
 }
 
 @media (max-width: 520px) {
-
   .tenant-access-row {
     gap: 8px;
   }
@@ -595,11 +576,9 @@ body,
     white-space: normal;
     overflow-wrap: anywhere;
   }
-
 }
 
 @media (max-width: 760px) {
-
   .tenant-access-list {
     display: block;
     width: 100%;
@@ -622,7 +601,6 @@ body,
     background: #aabbb1;
     border-radius: 999px;
   }
-
 }
 
 .tenant-access-key-wrap {
@@ -657,7 +635,6 @@ body,
 }
 
 @media (max-width: 760px) {
-
   .tenant-access-row {
     grid-template-columns: 1fr;
   }
@@ -670,5 +647,37 @@ body,
     justify-content: flex-start;
     flex-wrap: wrap;
   }
+}
 
+@media (max-width: 760px) {
+  .tenant-access-settings {
+    overflow: visible;
+  }
+
+  .tenant-access-list {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible !important;
+    padding-bottom: 0;
+    touch-action: auto;
+  }
+
+  .tenant-access-row {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .tenant-access-key-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tenant-access-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }

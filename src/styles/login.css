@@ -229,7 +229,10 @@
 }
 
 .auth-card .brand.large {
+  height: auto;
+  min-height: 0;
   padding: 0 0 20px;
+  justify-content: flex-start;
 }
 
 .auth-card h1 {
