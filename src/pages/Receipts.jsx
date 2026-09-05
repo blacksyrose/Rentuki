@@ -626,7 +626,7 @@ async function generateReceipt({ payment, payments, properties, toast }) {
     drawLongField(
       doc,
       "Received by:",
-      "Erika Ferolino",
+      payment?.received_by || "",
       leftX,
       81,
       144,
@@ -665,6 +665,9 @@ function getReceiptNumber(payment, payments = []) {
   if (payment?.receipt_number) return payment.receipt_number;
 
   const month = getPaymentMonth(payment);
+
+  if (!month) return "";
+
   const paymentGroup = (payments || [])
     .filter((item) => {
       return (
@@ -679,9 +682,21 @@ function getReceiptNumber(payment, payments = []) {
     1,
   );
 
-  const unitNumber = payment?.tenancies?.units?.unit_number || "-";
+  const unitNumber = getUnitCode(payment);
 
-  return `RCPT-${formatReceiptMonth(month)}${unitNumber}-${sequence}`;
+  return `${formatReceiptMonth(month)}${unitNumber}-${sequence}`;
+}
+
+function getUnitCode(payment) {
+  const rawUnit =
+    payment?.tenancies?.units?.unit_number ||
+    payment?.unit_number ||
+    "";
+
+  const digits = String(rawUnit).replace(/[^0-9]/g, "");
+  const unitNumber = digits.match(/[0-9]+$/)?.[0] || "00";
+
+  return unitNumber.padStart(2, "0");
 }
 
 function getReceiptFileName(payment, tenantName) {
@@ -712,19 +727,14 @@ function receiptDateLabel(payment) {
 
 function getPaymentMonth(payment) {
   return String(
-    payment?.payment_date || payment?.billing_records?.billing_month || "",
+    payment?.payment_date ||
+      payment?.created_at ||
+      "",
   ).slice(0, 7);
 }
 
 function getPaymentGroupKey(payment) {
-  const tenancyId = payment?.tenancy_id || payment?.tenancies?.id;
-
-  if (tenancyId) return `tenancy:${tenancyId}`;
-
-  const tenantId = payment?.tenant_id || payment?.tenants?.id || "";
-  const unitNumber = payment?.tenancies?.units?.unit_number || "";
-
-  return `tenant:${tenantId}|unit:${unitNumber}`;
+  return `unit:${getUnitCode(payment)}`;
 }
 
 function compareReceiptListDates(first, second) {

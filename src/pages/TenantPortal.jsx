@@ -178,23 +178,25 @@ async function loadFontBase64(url) {
 function getTenantPaymentMonth(payment) {
   return String(
     payment?.payment_date ||
-      payment?.billing_records?.billing_month ||
-      payment?.billing_month ||
+      payment?.created_at ||
       "",
   ).slice(0, 7);
 }
 
+function getTenantUnitCode(payment) {
+  const rawUnit =
+    payment?.unit_number ||
+    payment?.tenancies?.units?.unit_number ||
+    "";
+
+  const digits = String(rawUnit).replace(/[^0-9]/g, "");
+  const unitNumber = digits.match(/[0-9]+$/)?.[0] || "00";
+
+  return unitNumber.padStart(2, "0");
+}
+
 function getTenantPaymentGroupKey(payment) {
-  const tenancyId = payment?.tenancy_id || payment?.tenancies?.id;
-
-  if (tenancyId) return `tenancy:${tenancyId}`;
-
-  const tenantId = payment?.tenant_id || payment?.tenants?.id || "";
-
-  const unitNumber =
-    payment?.unit_number || payment?.tenancies?.units?.unit_number || "";
-
-  return `tenant:${tenantId}|unit:${unitNumber}`;
+  return `unit:${getTenantUnitCode(payment)}`;
 }
 
 function compareTenantPayments(first, second) {
@@ -231,10 +233,9 @@ function getTenantReceiptNumber(payment, payments = []) {
     1,
   );
 
-  const unitNumber =
-    payment?.unit_number || payment?.tenancies?.units?.unit_number || "-";
+  const unitNumber = getTenantUnitCode(payment);
 
-  return `RCPT-${formatReceiptMonth(month)}${unitNumber}-${sequence}`;
+  return `${formatReceiptMonth(month)}${unitNumber}-${sequence}`;
 }
 
 function getTenantReceiptFileName(payment, tenant) {
@@ -632,7 +633,7 @@ async function downloadTenantReceipt(
     drawReceiptLongField(
       doc,
       "Received by:",
-      "Erika Ferolino",
+      payment?.received_by || "",
       leftX,
       81,
       144,

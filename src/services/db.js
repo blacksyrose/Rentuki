@@ -328,7 +328,7 @@ export const db = {
       const billingMonth = monthKey(month);
 
       return unwrap(
-        supabase.rpc("tenant_portal_summary", {
+        supabase.rpc("tenant_portal_summary_with_received_by", {
           p_access_key: normalized,
           p_billing_month: monthStartDate(billingMonth),
         }),
@@ -391,12 +391,35 @@ export const db = {
   },
 
   /* ------------------------------------------------------------------------ */
+  /* Profiles                                                                 */
+  /* ------------------------------------------------------------------------ */
+
+  profiles: {
+    current: async () => {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error) throw error;
+
+      const userId = data?.user?.id;
+      if (!userId) return null;
+
+      return unwrap(
+        supabase
+          .from("profiles")
+          .select("id,full_name")
+          .eq("id", userId)
+          .maybeSingle(),
+      );
+    },
+  },
+
+  /* ------------------------------------------------------------------------ */
   /* Payments                                                                 */
   /* ------------------------------------------------------------------------ */
 
   payments: {
-    list: () =>
-      unwrap(
+    list: async () => {
+      const records = await unwrap(
         supabase
           .from("payments")
           .select(
@@ -408,7 +431,53 @@ export const db = {
           .order("created_at", {
             ascending: false,
           }),
-      ),
+      );
+
+      if (!records?.length) return records || [];
+
+      const createdByIds = [
+        ...new Set(
+          records
+            .map((payment) => payment.created_by)
+            .filter(Boolean),
+        ),
+      ];
+
+      if (!createdByIds.length) {
+        return records.map((payment) => ({
+          ...payment,
+          created_by_name: null,
+        }));
+      }
+
+      let profiles = [];
+
+      try {
+        profiles =
+          (await unwrap(
+            supabase
+              .from("profiles")
+              .select("id,full_name")
+              .in("id", createdByIds),
+          )) || [];
+      } catch (profileError) {
+        console.warn(
+          "Unable to load payment receiver names:",
+          profileError,
+        );
+      }
+
+      const profileMap = new Map(
+        profiles.map((profile) => [profile.id, profile.full_name || null]),
+      );
+
+      return records.map((payment) => ({
+        ...payment,
+        created_by_name: payment.created_by
+          ? profileMap.get(payment.created_by) || null
+          : null,
+      }));
+    },
 
     update: (id, payload) =>
       unwrap(
@@ -554,6 +623,7 @@ export async function recordPayment({
   paymentMethod,
   referenceNumber,
   notes,
+  receivedBy,
 }) {
   const paymentAmount = toNumber(amount, "Payment amount");
 
@@ -587,7 +657,7 @@ export async function recordPayment({
     }
   }
 
-  return unwrap(
+  const created = await unwrap(
     supabase.rpc("record_payment", {
       p_tenant_id: tenantId,
       p_tenancy_id: tenancyId,
@@ -600,6 +670,16 @@ export async function recordPayment({
       p_notes: cleanText(notes),
     }),
   );
+
+  // Keep the existing payment RPC unchanged. The manually entered receiver
+  // is stored separately in payments.received_by.
+  if (created?.id) {
+    return db.payments.update(created.id, {
+      received_by: cleanText(receivedBy),
+    });
+  }
+
+  return created;
 }
 
 /*
@@ -633,6 +713,7 @@ export async function updatePayment(idOrOptions, maybePayload) {
       payment_method: idOrOptions.paymentMethod,
       reference_number: idOrOptions.referenceNumber,
       notes: idOrOptions.notes,
+      received_by: idOrOptions.receivedBy,
       payment_type: idOrOptions.paymentType,
     };
   }
@@ -667,6 +748,10 @@ export async function updatePayment(idOrOptions, maybePayload) {
 
   if (payload.notes !== undefined) {
     cleaned.notes = cleanText(payload.notes);
+  }
+
+  if (payload.received_by !== undefined) {
+    cleaned.received_by = cleanText(payload.received_by);
   }
 
   /*

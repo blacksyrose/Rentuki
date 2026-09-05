@@ -140,6 +140,7 @@ export default function Payments() {
     amount: "",
     payment_date: "",
     payment_method: "Cash",
+    received_by: "",
     notes: "",
   });
 
@@ -180,6 +181,7 @@ export default function Payments() {
       amount: "",
       payment_date: "",
       payment_method: "Cash",
+      received_by: "",
       notes: "",
     });
   };
@@ -218,6 +220,7 @@ export default function Payments() {
       amount: remainingBalance(billingRecord),
       payment_date: "",
       payment_method: "Cash",
+      received_by: "",
       notes: "",
     });
     setOpen(true);
@@ -299,6 +302,7 @@ export default function Payments() {
       amount: "",
       payment_date: "",
       payment_method: "Cash",
+      received_by: "",
       notes: "",
     });
     setOpen(true);
@@ -314,6 +318,7 @@ export default function Payments() {
       amount: Number(payment.amount || 0),
       payment_date: payment.payment_date || "",
       payment_method: payment.payment_method || "Cash",
+      received_by: payment.received_by || "",
       notes: payment.notes || "",
     });
     setOpen(true);
@@ -329,6 +334,7 @@ export default function Payments() {
       amount: Number(payment.amount || 0),
       payment_date: payment.payment_date || "",
       payment_method: payment.payment_method || "Cash",
+      received_by: payment.received_by || "",
       notes: payment.notes || "",
     });
     setOpen(true);
@@ -379,6 +385,7 @@ export default function Payments() {
           amount,
           payment_date: form.payment_date || null,
           payment_method: form.payment_method,
+          received_by: form.received_by,
           notes: form.notes,
           payment_type: type,
         });
@@ -422,6 +429,7 @@ export default function Payments() {
           amount,
           paymentDate: form.payment_date || null,
           paymentMethod: form.payment_method,
+          receivedBy: form.received_by,
           notes: form.notes,
         });
 
@@ -448,6 +456,7 @@ export default function Payments() {
           amount,
           paymentDate: form.payment_date || null,
           paymentMethod: form.payment_method,
+          receivedBy: form.received_by,
           notes: form.notes,
         });
 
@@ -936,6 +945,18 @@ export default function Payments() {
               <option value="G-Cash">G-Cash</option>
               <option value="Maribank">Maribank</option>
             </select>
+          </label>
+
+          <label>
+            Received By
+            <input
+              type="text"
+              value={form.received_by}
+              onChange={(event) =>
+                setForm({ ...form, received_by: event.target.value })
+              }
+              placeholder="Enter receiver name"
+            />
           </label>
 
           <label className="full-span">
