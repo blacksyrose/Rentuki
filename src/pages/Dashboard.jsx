@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -117,6 +117,26 @@ export default function Dashboard() {
   const billing = useAsync(() => db.billing.list(currentMonth()), []);
   const maintenance = useAsync(() => db.maintenance.list(), []);
   const expenses = useAsync(() => db.expenses.list(), []);
+
+  const [firstName, setFirstName] = useState("");
+
+  useEffect(() => {
+    const loadUserName = async () => {
+      try {
+        const profile = await db.profiles.current();
+
+        const fullName = profile?.full_name?.trim() || "";
+        const name = fullName.split(/\s+/)[0] || "";
+
+        setFirstName(name);
+      } catch (error) {
+        console.error("Unable to load user name:", error);
+        setFirstName("");
+      }
+    };
+
+    loadUserName();
+  }, []);
 
   const historicalBilling = useAsync(async () => {
     // Load every billing record, then build all 12 months of the current year.
@@ -343,10 +363,12 @@ export default function Dashboard() {
 
       <div className="page-head dashboard-head">
         <div>
-          <h1>{getTimeGreeting()}, Admin</h1>
-          <p>Here's what's happening with your properties today.</p>
+          <h1>
+            {getTimeGreeting()}
+            {firstName ? `, ${firstName}` : ""}
+          </h1>
+          <p>Track and manage your property dashboard.</p>
         </div>
-
       </div>
 
       {/* SUMMARY CARDS */}

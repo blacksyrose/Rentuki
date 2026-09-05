@@ -328,7 +328,7 @@ export const db = {
       const billingMonth = monthKey(month);
 
       return unwrap(
-        supabase.rpc("tenant_portal_summary_with_received_by", {
+        supabase.rpc("tenant_portal_summary", {
           p_access_key: normalized,
           p_billing_month: monthStartDate(billingMonth),
         }),
@@ -400,16 +400,35 @@ export const db = {
 
       if (error) throw error;
 
-      const userId = data?.user?.id;
+      const user = data?.user;
+      const userId = user?.id;
       if (!userId) return null;
 
-      return unwrap(
-        supabase
-          .from("profiles")
-          .select("id,full_name")
-          .eq("id", userId)
-          .maybeSingle(),
-      );
+      const metadata = user?.user_metadata || {};
+      const authFullName = String(
+        metadata.full_name || metadata.name || metadata.display_name || "",
+      ).trim();
+
+      let profile = null;
+
+      try {
+        profile = await unwrap(
+          supabase
+            .from("profiles")
+            .select("id,full_name")
+            .eq("id", userId)
+            .maybeSingle(),
+        );
+      } catch (profileError) {
+        console.warn("Unable to load user profile:", profileError);
+      }
+
+      const profileFullName = String(profile?.full_name || "").trim();
+
+      return {
+        id: userId,
+        full_name: profileFullName || authFullName || null,
+      };
     },
   },
 
@@ -623,7 +642,6 @@ export async function recordPayment({
   paymentMethod,
   referenceNumber,
   notes,
-  receivedBy,
 }) {
   const paymentAmount = toNumber(amount, "Payment amount");
 
@@ -657,7 +675,7 @@ export async function recordPayment({
     }
   }
 
-  const created = await unwrap(
+  return unwrap(
     supabase.rpc("record_payment", {
       p_tenant_id: tenantId,
       p_tenancy_id: tenancyId,
@@ -670,16 +688,6 @@ export async function recordPayment({
       p_notes: cleanText(notes),
     }),
   );
-
-  // Keep the existing payment RPC unchanged. The manually entered receiver
-  // is stored separately in payments.received_by.
-  if (created?.id) {
-    return db.payments.update(created.id, {
-      received_by: cleanText(receivedBy),
-    });
-  }
-
-  return created;
 }
 
 /*
@@ -713,7 +721,6 @@ export async function updatePayment(idOrOptions, maybePayload) {
       payment_method: idOrOptions.paymentMethod,
       reference_number: idOrOptions.referenceNumber,
       notes: idOrOptions.notes,
-      received_by: idOrOptions.receivedBy,
       payment_type: idOrOptions.paymentType,
     };
   }
@@ -748,10 +755,6 @@ export async function updatePayment(idOrOptions, maybePayload) {
 
   if (payload.notes !== undefined) {
     cleaned.notes = cleanText(payload.notes);
-  }
-
-  if (payload.received_by !== undefined) {
-    cleaned.received_by = cleanText(payload.received_by);
   }
 
   /*
