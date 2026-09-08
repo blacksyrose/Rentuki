@@ -8,6 +8,7 @@ import { useAsync } from "../hooks/useData";
 import { compareUnitNumbers, money } from "../lib/utils";
 import { useToast } from "../components/Toast";
 import { useSearchParams } from "react-router-dom";
+import ExportButton from "../components/ExportButton";
 
 const emptyForm = () => ({
   property_id: "",
@@ -206,6 +207,26 @@ export default function Units() {
             rent rates.
           </p>
         </div>
+        <ExportButton
+          filename="unit-report.csv"
+          rows={(data || []).map((unit) => {
+            const activeTenancy = (tenancies.data || []).find(
+              (tenancy) => tenancy.unit_id === unit.id && tenancy.status === "active" && !tenancy.end_date,
+            );
+            const tenant = activeTenancy?.tenants;
+            return {
+              unit: unit.unit_number || "",
+              type: unit.unit_type || "",
+              floor: unit.floor || "",
+              rent: unit.default_rent ?? "",
+              status: unit.status || "",
+              tenant: tenant ? `${tenant.first_name || ""} ${tenant.last_name || ""}`.trim() : "",
+              electricity_meter: unit.electricity_meter_type || "",
+              electricity_can: unit.electricity_can || "",
+              water_can: unit.water_can || "",
+            };
+          })}
+        />
       </div>
 
       <section className="unit-grid unit-directory-grid">

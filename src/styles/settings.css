@@ -314,23 +314,6 @@
   color: #047857;
 }
 
-.report-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-
-.report-grid .panel {
-  min-height: 155px;
-}
-
-.report-grid h2 {
-  margin-bottom: 7px;
-}
-
-.report-grid p {
-  margin-bottom: 22px;
-}
 
 .report-import-modal {
   width: min(900px, 95vw);
@@ -367,9 +350,6 @@
   min-width: 620px;
 }
 
-.report-page-head {
-  margin-top: 24px;
-}
 
 .modal-actions {
   display: flex;
@@ -379,10 +359,6 @@
 }
 
 @media (max-width: 800px) {
-  .report-grid {
-    grid-template-columns: 1fr;
-  }
-
   .report-import-summary {
     align-items: flex-start;
     flex-direction: column;

@@ -18,6 +18,7 @@ import { compareUnitNumbers, money, dateLabel } from "../lib/utils";
 import { useToast } from "../components/Toast";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import ExportButton from "../components/ExportButton";
 
 export default function Tenants() {
   const { data, loading, refresh } = useAsync(() => db.tenants.list(), []);
@@ -673,6 +674,25 @@ export default function Tenants() {
           </p>
         </div>
 
+        <ExportButton
+          filename={`tenant-report-${historical ? "historical" : "active"}.csv`}
+          rows={tenants.map((tenant) => {
+            const activeTenancy = (tenant.tenancies || []).find(
+              (tenancy) => tenancy.status === "active" && !tenancy.end_date,
+            );
+            const unit = activeTenancy?.units || (units || []).find((item) => item.id === activeTenancy?.unit_id);
+            return {
+              name: `${tenant.first_name || ""} ${tenant.last_name || ""}`.trim() || tenant.full_name || "",
+              phone: tenant.phone || "",
+              email: tenant.email || "",
+              address: tenant.address || "",
+              unit: unit?.unit_number || "",
+              monthly_rent: activeTenancy?.monthly_rent ?? "",
+              balance: tenantBalanceMap.get(tenant.id) || 0,
+              status: tenant.status || "",
+            };
+          })}
+        />
       </div>
 
       <div className="tenant-directory-toolbar">

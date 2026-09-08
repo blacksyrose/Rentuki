@@ -497,7 +497,7 @@ export default function Payments() {
 
         <div className="actions">
           <input
-            className="month-input"
+            className="month-input secondary"
             type="month"
             value={month}
             onChange={(event) => setMonth(event.target.value)}

@@ -488,12 +488,6 @@ td small {
   color: #8290a1;
 }
 
-.month-input {
-  border: 1px solid #dbe2eb;
-  background: #fff;
-  border-radius: 8px;
-  padding: 9px 11px;
-}
 
 .form-grid {
   display: grid;
@@ -969,10 +963,6 @@ tbody tr:hover {
   border-top-color: var(--rk-border-soft);
 }
 
-.month-input {
-  border-color: var(--rk-border);
-  border-radius: 9px;
-}
 
 .form-grid input:focus,
 .form-grid select:focus,
@@ -2279,13 +2269,6 @@ tbody tr:hover {
   font-size: 12px;
 }
 
-.month-input {
-  min-height: 40px;
-  border-color: var(--rk-border);
-  border-radius: 11px;
-  color: #44534a;
-  font-size: 12px;
-}
 
 .unit-price {
   color: #17211b;

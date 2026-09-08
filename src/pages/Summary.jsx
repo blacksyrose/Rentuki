@@ -146,7 +146,7 @@ export default function Summary() {
         </div>
         <div className="actions">
           <input
-            className="month-input"
+            className="month-input secondary"
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}

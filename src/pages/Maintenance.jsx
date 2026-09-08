@@ -8,6 +8,7 @@ import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
 import { compareUnitNumbers, money } from "../lib/utils";
 import { useToast } from "../components/Toast";
+import ExportButton from "../components/ExportButton";
 
 const emptyMaintenanceForm = () => ({
   unit_id: "",
@@ -433,6 +434,33 @@ export default function Maintenance() {
           <p>Track repairs and operating costs in one place.</p>
         </div>
 
+        <ExportButton
+          filename={`${tab === "maintenance" ? "maintenance" : "expense"}-report.csv`}
+          label={`${tab === "maintenance" ? "Export" : "Export"} CSV`}
+          rows={
+            tab === "maintenance"
+              ? maintenanceRows.map((item) => ({
+                  issue: item.title || "",
+                  description: item.description || "",
+                  unit: item.units?.unit_number || "Property-wide",
+                  reported: item.reported_date || "",
+                  priority: item.priority || "",
+                  status: item.status || "",
+                  assigned: item.assigned_person || "",
+                  cost: Number(item.actual_cost || item.estimated_cost || 0),
+                }))
+              : expenseRows.map((item) => ({
+                  date: item.expense_date || "",
+                  category: item.category || "Other",
+                  description: item.description || "",
+                  vendor: item.vendor || "",
+                  unit: item.units?.unit_number || "Property-wide",
+                  amount: Number(item.amount || 0),
+                  payment_method: item.payment_method || "",
+                  reference: item.reference || "",
+                }))
+          }
+        />
       </div>
 
       {/* ------------------------------------------------------------------ */}

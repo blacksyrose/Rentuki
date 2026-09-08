@@ -4,29 +4,25 @@ import {
   ArrowUpRight,
   Building2,
   CreditCard,
-  UserPlus,
-  Users,
-  Wrench,
-  Receipt,
-  Wallet,
-  TrendingUp,
   CircleDollarSign,
+  Receipt,
+  TrendingUp,
+  Users,
+  Wallet,
+  Wrench,
 } from "lucide-react";
 
 import { db } from "../services/db";
 import { useAsync } from "../hooks/useData";
-import { currentMonth, money } from "../lib/utils";
+import { currentMonth, money, monthLabel } from "../lib/utils";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
 
 function formatDate(value) {
   if (!value) return "—";
-
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return String(value);
-
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -36,7 +32,6 @@ function formatDate(value) {
 
 function getTimeGreeting() {
   const hour = new Date().getHours();
-
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
@@ -44,7 +39,6 @@ function getTimeGreeting() {
 
 function getTenantName(tenant) {
   if (!tenant) return "Unknown tenant";
-
   return (
     tenant.name ||
     tenant.full_name ||
@@ -54,41 +48,16 @@ function getTenantName(tenant) {
   );
 }
 
-function getAllMonthsOfYear(monthValue = currentMonth()) {
-  const year =
-    Number(String(monthValue).slice(0, 4)) || new Date().getFullYear();
-
-  return Array.from({ length: 12 }, (_, index) => {
-    return `${year}-${String(index + 1).padStart(2, "0")}`;
-  });
+function getAllMonthsOfYear(monthValue) {
+  const year = Number(String(monthValue).slice(0, 4)) || new Date().getFullYear();
+  return Array.from({ length: 12 }, (_, index) =>
+    `${year}-${String(index + 1).padStart(2, "0")}`,
+  );
 }
 
 function monthShortLabel(monthValue) {
-  const date = new Date(`${monthValue}-01T00:00:00`);
-
-  return date.toLocaleDateString("en-US", {
+  return new Date(`${monthValue}-01T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
-  });
-}
-
-function monthChartLabel(monthValue, allMonths = []) {
-  const date = new Date(`${monthValue}-01T00:00:00`);
-  const hasMultipleYears =
-    new Set((allMonths || []).map((value) => String(value).slice(0, 4))).size >
-    1;
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    ...(hasMultipleYears ? { year: "2-digit" } : {}),
-  });
-}
-
-function monthLongLabel(monthValue) {
-  const date = new Date(`${monthValue}-01T00:00:00`);
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
   });
 }
 
@@ -97,51 +66,41 @@ function smoothLinePath(points) {
   if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
 
   let path = `M ${points[0].x} ${points[0].y}`;
-
   for (let index = 1; index < points.length; index += 1) {
     const previous = points[index - 1];
     const current = points[index];
     const dx = (current.x - previous.x) / 3;
-
-    path += ` C ${previous.x + dx} ${previous.y}, ${
-      current.x - dx
-    } ${current.y}, ${current.x} ${current.y}`;
+    path += ` C ${previous.x + dx} ${previous.y}, ${current.x - dx} ${current.y}, ${current.x} ${current.y}`;
   }
-
   return path;
 }
 
+function niceChartMax(value) {
+  const numericValue = Number(value) || 0;
+  if (numericValue <= 0) return 1;
+
+  const padded = numericValue * 1.1;
+  const magnitude = 10 ** Math.floor(Math.log10(padded));
+  const normalized = padded / magnitude;
+  const step = normalized <= 2 ? 0.5 : normalized <= 5 ? 1 : 2;
+  return Math.ceil(normalized / step) * step * magnitude;
+}
+
 export default function Dashboard() {
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth());
+  const [firstName, setFirstName] = useState("");
+  const [hoveredRentIndex, setHoveredRentIndex] = useState(null);
+
   const units = useAsync(() => db.units.list(), []);
-  const tenants = useAsync(() => db.tenants.list(), []);
-  const billing = useAsync(() => db.billing.list(currentMonth()), []);
+  const billing = useAsync(() => db.billing.list(selectedMonth), [selectedMonth]);
   const maintenance = useAsync(() => db.maintenance.list(), []);
   const expenses = useAsync(() => db.expenses.list(), []);
 
-  const [firstName, setFirstName] = useState("");
-
-  useEffect(() => {
-    const loadUserName = async () => {
-      try {
-        const profile = await db.profiles.current();
-
-        const fullName = profile?.full_name?.trim() || "";
-        const name = fullName.split(/\s+/)[0] || "";
-
-        setFirstName(name);
-      } catch (error) {
-        console.error("Unable to load user name:", error);
-        setFirstName("");
-      }
-    };
-
-    loadUserName();
-  }, []);
+  const selectedYear = String(selectedMonth).slice(0, 4);
 
   const historicalBilling = useAsync(async () => {
-    // Load every billing record, then build all 12 months of the current year.
     const records = await db.billing.listAll();
-    const months = getAllMonthsOfYear(currentMonth());
+    const months = getAllMonthsOfYear(selectedMonth);
 
     return months.map((month) => ({
       month,
@@ -149,30 +108,29 @@ export default function Dashboard() {
         (record) => String(record?.billing_month || "").slice(0, 7) === month,
       ),
     }));
+  }, [selectedYear]);
+
+  useEffect(() => {
+    const loadUserName = async () => {
+      try {
+        const profile = await db.profiles.current();
+        const fullName = profile?.full_name?.trim() || "";
+        setFirstName(fullName.split(/\s+/)[0] || "");
+      } catch (error) {
+        console.error("Unable to load user name:", error);
+      }
+    };
+    loadUserName();
   }, []);
 
-  const [hoveredRentIndex, setHoveredRentIndex] = useState(null);
-  const [hoveredOccupancy, setHoveredOccupancy] = useState(null);
-
   const us = units.data || [];
-  const ts = tenants.data || [];
   const bs = billing.data || [];
   const ms = maintenance.data || [];
   const es = expenses.data || [];
 
-  /* DASHBOARD NUMBERS */
-
-  const activeTenants = ts.filter((t) => t.status === "active");
-
   const occupied = us.filter(
-    (u) => String(u.status || "").toLowerCase() === "occupied",
+    (unit) => String(unit.status || "").toLowerCase() === "occupied",
   ).length;
-
-  const vacant = Math.max(us.length - occupied, 0);
-
-  const occupancyRate = us.length
-    ? Math.round((occupied / us.length) * 1000) / 10
-    : 0;
 
   const expected = bs.reduce(
     (total, item) => total + Number(item.amount_due || 0),
@@ -191,64 +149,56 @@ export default function Dashboard() {
 
   const outstanding = Math.max(expected - collected, 0);
 
-  const expensesThis = es
-    .filter((expense) =>
-      String(expense.expense_date || "").startsWith(currentMonth()),
-    )
-    .reduce((total, expense) => total + Number(expense.amount || 0), 0);
+  const selectedExpenses = useMemo(
+    () =>
+      es.filter((expense) =>
+        String(expense.expense_date || "").startsWith(selectedMonth),
+      ),
+    [es, selectedMonth],
+  );
 
-  const overdue = bs.filter((item) => {
-    const due = new Date(item.due_date);
+  const expensesThis = selectedExpenses.reduce(
+    (total, expense) => total + Number(expense.amount || 0),
+    0,
+  );
 
-    const paid = (item.payments || []).reduce(
-      (total, payment) => total + Number(payment.amount || 0),
-      0,
-    );
+  const selectedMaintenance = useMemo(
+    () =>
+      ms.filter((item) =>
+        String(item.reported_date || item.created_at || "").startsWith(
+          selectedMonth,
+        ),
+      ),
+    [ms, selectedMonth],
+  );
 
-    return (
-      !Number.isNaN(due.getTime()) &&
-      due < new Date() &&
-      Number(item.amount_due || 0) > paid
-    );
-  }).length;
-
-  const openMaintenance = ms.filter((item) => {
-    const status = String(item.status || "").toLowerCase();
-
-    return status === "open" || status === "in progress";
-  }).length;
+  const requestCount = selectedMaintenance.length;
+  const openRequests = selectedMaintenance.filter((item) =>
+    ["open", "in progress", "in_progress"].includes(
+      String(item.status || "").toLowerCase(),
+    ),
+  ).length;
 
   const netIncome = collected - expensesThis;
 
-  /* EXPENSE BREAKDOWN */
-
   const expenseBreakdown = useMemo(() => {
     const categories = {};
-
-    es.filter((expense) =>
-      String(expense.expense_date || "").startsWith(currentMonth()),
-    ).forEach((expense) => {
+    selectedExpenses.forEach((expense) => {
       const category =
         expense.category || expense.expense_category || expense.type || "Other";
-
       categories[category] =
         (categories[category] || 0) + Number(expense.amount || 0);
     });
 
     return Object.entries(categories)
-      .map(([category, amount]) => ({
-        category,
-        amount,
-      }))
-      .sort((a, b) => b.amount - a.amount);
-  }, [es]);
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 6);
+  }, [selectedExpenses]);
 
-  const maxExpense = Math.max(
-    ...expenseBreakdown.map((item) => item.amount),
-    1,
+  const maxExpense = niceChartMax(
+    Math.max(...expenseBreakdown.map((item) => item.amount), 0),
   );
-
-  /* RECENT PAYMENTS */
 
   const recentPayments = useMemo(() => {
     return bs
@@ -260,40 +210,31 @@ export default function Dashboard() {
           date: payment.payment_date || payment.created_at,
         })),
       )
-      .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
       .slice(0, 5);
   }, [bs]);
 
-  /* RECENT MAINTENANCE */
-
-  const recentMaintenance = useMemo(() => {
-    return [...ms]
-      .sort((a, b) =>
-        String(b.reported_date || b.created_at || "").localeCompare(
-          String(a.reported_date || a.created_at || ""),
-        ),
-      )
-      .slice(0, 4);
-  }, [ms]);
-
-  /* RENT COLLECTION GRAPH */
+  const recentMaintenance = useMemo(
+    () =>
+      [...selectedMaintenance]
+        .sort((a, b) =>
+          String(b.reported_date || b.created_at || "").localeCompare(
+            String(a.reported_date || a.created_at || ""),
+          ),
+        )
+        .slice(0, 4),
+    [selectedMaintenance],
+  );
 
   const rentCollection = useMemo(() => {
-    const months = (historicalBilling.data || []).map((item) => item.month);
-
-    return months.map((month) => {
-      const monthData = (historicalBilling.data || []).find(
-        (item) => item.month === month,
-      );
-
-      const records = monthData?.records || [];
-
-      const expectedAmount = records.reduce(
+    return (historicalBilling.data || []).map(({ month, records }) => ({
+      month,
+      label: monthShortLabel(month),
+      expected: (records || []).reduce(
         (total, record) => total + Number(record.amount_due || 0),
         0,
-      );
-
-      const collectedAmount = records.reduce(
+      ),
+      collected: (records || []).reduce(
         (total, record) =>
           total +
           (record.payments || []).reduce(
@@ -302,34 +243,24 @@ export default function Dashboard() {
             0,
           ),
         0,
-      );
-
-      return {
-        month,
-        label: monthShortLabel(month),
-        expected: expectedAmount,
-        collected: collectedAmount,
-      };
-    });
+      ),
+    }));
   }, [historicalBilling.data]);
 
-  const rentMax = Math.max(
-    ...rentCollection.flatMap((item) => [item.expected, item.collected]),
-    1,
+  const rentMax = niceChartMax(
+    Math.max(...rentCollection.flatMap((item) => [item.expected, item.collected]), 0),
   );
 
   const rentChartPoints = useMemo(() => {
-    const left = 0;
-    const right = 720;
+    const left = 30;
+    const right = 690;
     const top = 0;
-    const bottom = 242;
-    const width = right - left;
+    const bottom = 136;
     const height = bottom - top;
-
     const toPoint = (item, index, key) => ({
       x:
         rentCollection.length > 1
-          ? left + (index / (rentCollection.length - 1)) * width
+          ? left + (index / (rentCollection.length - 1)) * (right - left)
           : (left + right) / 2,
       y: bottom - (item[key] / rentMax) * height,
     });
@@ -346,21 +277,13 @@ export default function Dashboard() {
 
   const hoveredRent =
     hoveredRentIndex !== null ? rentCollection[hoveredRentIndex] : null;
-
   const hoveredRentPoint =
     hoveredRentIndex !== null
       ? rentChartPoints.collected[hoveredRentIndex]
       : null;
 
-  const occupancyCircumference = 2 * Math.PI * 72;
-  const occupancyOffset = occupancyCircumference * (1 - occupancyRate / 100);
-
-  /* RENDER */
-
   return (
     <div className="dashboard-page">
-      {/* HEADER */}
-
       <div className="page-head dashboard-head">
         <div>
           <h1>
@@ -369,71 +292,103 @@ export default function Dashboard() {
           </h1>
           <p>Track and manage your property dashboard.</p>
         </div>
+
+        <div className="actions dashboard-month-actions">
+          <input
+            className="month-input secondary"
+            type="month"
+            value={selectedMonth}
+            onChange={(event) => {
+              const nextMonth = event.target.value;
+              if (!nextMonth) return;
+              setSelectedMonth(nextMonth);
+              setHoveredRentIndex(null);
+            }}
+            aria-label="Dashboard month and year"
+          />
+        </div>
       </div>
 
-      {/* SUMMARY CARDS */}
+      <div className="dashboard-summary-layout">
+        <div className="dashboard-stat-grid">
+          <StatCard
+            label="Total Units"
+            value={us.length}
+            hint="Property inventory"
+            icon={Building2}
+          />
+          <StatCard
+            label="Occupied"
+            value={occupied}
+            hint={us.length ? `${Math.round((occupied / us.length) * 100)}% occupied` : "0% occupied"}
+            icon={Users}
+            tone="success"
+          />
+          <StatCard
+            label="Requests"
+            value={requestCount}
+            hint={`${openRequests} open this month`}
+            icon={Wrench}
+          />
+          <StatCard
+            label="Expected Rent"
+            value={money(expected)}
+            hint={monthLabel(selectedMonth)}
+            icon={CircleDollarSign}
+          />
+          <StatCard
+            label="Collected"
+            value={money(collected)}
+            hint={expected ? `${Math.round((collected / expected) * 100)}% collected` : "0% collected"}
+            icon={TrendingUp}
+            tone="success"
+          />
+          <StatCard
+            label="Outstanding"
+            value={money(outstanding)}
+            hint={outstanding > 0 ? "Balance remaining" : "Fully collected"}
+            icon={Wallet}
+            tone={outstanding > 0 ? "warning" : "success"}
+          />
+        </div>
 
-      <div className="stats-grid dashboard-stats dashboard-stats-five">
-        <StatCard
-          label="Total Units"
-          value={us.length}
-          hint={`${occupied} currently occupied`}
-          icon={Building2}
-        />
+        <section className="dashboard-net-income">
+          <div className="net-income-top">
+            <div>
+              <span className="net-income-label">Net Income</span>
+              <strong>{money(netIncome)}</strong>
+              <p>{monthLabel(selectedMonth)}</p>
+            </div>
+            <div className="net-income-icon">
+              <TrendingUp size={20} />
+            </div>
+          </div>
 
-        <StatCard
-          label="Occupied Units"
-          value={occupied}
-          hint={`${occupancyRate}% occupancy`}
-          icon={Users}
-          tone="success"
-        />
-
-        <StatCard
-          label="Expected Rent"
-          value={money(expected)}
-          hint={currentMonth()}
-          icon={CircleDollarSign}
-        />
-
-        <StatCard
-          label="Collected"
-          value={money(collected)}
-          hint={
-            expected
-              ? `${Math.round((collected / expected) * 100)}% of expected`
-              : "0% collected"
-          }
-          icon={TrendingUp}
-          tone="success"
-        />
-
-        <StatCard
-          label="Outstanding"
-          value={money(outstanding)}
-          hint={`${overdue} overdue · ${openMaintenance} open repairs`}
-          icon={Wallet}
-          tone={outstanding > 0 ? "warning" : "success"}
-        />
+          <div className="net-income-bottom">
+            <div>
+              <span>Collected</span>
+              <strong>{money(collected)}</strong>
+            </div>
+            <div>
+              <span>Expenses</span>
+              <strong>{money(expensesThis)}</strong>
+            </div>
+          </div>
+        </section>
       </div>
 
-      {/* CHART ROW */}
-
-      <div className="dashboard-chart-grid">
-        {/* RENT COLLECTION */}
-
-        <section className="panel dashboard-chart-card rent-chart-card">
+      <div className="dashboard-main-grid">
+<section className="panel dashboard-chart-card rent-chart-card">
           <div className="panel-head">
             <div>
               <h2>Rent Collection</h2>
-              <p>Expected vs collected across all months of the year</p>
+              <p>Expected vs collected for {selectedYear}</p>
             </div>
-
-            <div className="chart-month">{monthLongLabel(currentMonth())}</div>
+            <span className="chart-month">{selectedYear}</span>
           </div>
 
           <div
-            className="rent-chart rent-chart-reference"
+            className="rent-chart"
             onMouseLeave={() => setHoveredRentIndex(null)}
           >
             <div className="rent-chart-y">
@@ -443,7 +398,7 @@ export default function Dashboard() {
             </div>
 
             <div className="rent-chart-main">
-              <div className="chart-grid-lines">
+              <div className="chart-grid-lines" aria-hidden="true">
                 <span />
                 <span />
                 <span />
@@ -452,12 +407,15 @@ export default function Dashboard() {
               </div>
 
               <svg
-                className="rent-svg rent-svg-reference"
-                viewBox="0 0 720 270"
+                key={`rent-chart-${selectedYear}`}
+                className="rent-svg"
+                viewBox="0 0 720 136"
                 preserveAspectRatio="none"
-                aria-label="Rent collection across all months of the year"
+                aria-label={`Rent collection for ${selectedYear}`}
               >
                 <path
+                  className="rent-line rent-line-expected"
+                  pathLength="1"
                   d={smoothLinePath(rentChartPoints.expected)}
                   fill="none"
                   stroke="#91b9a9"
@@ -465,8 +423,9 @@ export default function Dashboard() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
-
                 <path
+                  className="rent-line rent-line-collected"
+                  pathLength="1"
                   d={smoothLinePath(rentChartPoints.collected)}
                   fill="none"
                   stroke="#3d765f"
@@ -486,38 +445,35 @@ export default function Dashboard() {
                         <line
                           x1={expectedPoint.x}
                           x2={expectedPoint.x}
-                          y1="18"
-                          y2="242"
+                          y1="0"
+                          y2="136"
                           stroke="#d6ddd9"
                           strokeWidth="1"
                         />
                       )}
-
                       <circle
-                        className={`rent-data-dot${isHovered ? " is-hovered" : ""}`}
                         cx={expectedPoint.x}
                         cy={expectedPoint.y}
-                        r="4.5"
+                        r="4"
+                        className="rent-point rent-point-expected"
                         fill="#91b9a9"
                         stroke="#fff"
                         strokeWidth="1.5"
                       />
-
                       <circle
-                        className={`rent-data-dot${isHovered ? " is-hovered" : ""}`}
                         cx={collectedPoint.x}
                         cy={collectedPoint.y}
-                        r="4.8"
+                        r="4.5"
+                        className="rent-point rent-point-collected"
                         fill="#fff"
                         stroke="#3d765f"
                         strokeWidth="2.5"
                       />
-
                       <rect
-                        x={expectedPoint.x - 34}
-                        y="18"
-                        width="68"
-                        height="224"
+                        x={expectedPoint.x - 30}
+                        y="0"
+                        width="60"
+                        height="136"
                         fill="transparent"
                         onMouseEnter={() => setHoveredRentIndex(index)}
                       />
@@ -531,142 +487,31 @@ export default function Dashboard() {
                   className="rent-hover-tooltip"
                   style={{
                     left: `${(hoveredRentPoint.x / 720) * 100}%`,
-                    top: `${Math.max(
-                      (hoveredRentPoint.y / 270) * 100 - 2,
-                      5,
-                    )}%`,
+                    top: `${Math.max((hoveredRentPoint.y / 136) * 100 - 2, 5)}%`,
                   }}
                 >
                   <strong>{monthShortLabel(hoveredRent.month)}</strong>
-                  <span>
-                    collected : <b>{money(hoveredRent.collected)}</b>
-                  </span>
-                  <span>
-                    expected : <b>{money(hoveredRent.expected)}</b>
-                  </span>
+                  <span>Expected: <b>{money(hoveredRent.expected)}</b></span>
+                  <span>Collected: <b>{money(hoveredRent.collected)}</b></span>
                 </div>
               )}
 
               <div className="rent-chart-x">
                 {rentCollection.map((item) => (
-                  <span key={item.month}>
-                    {monthChartLabel(
-                      item.month,
-                      rentCollection.map((entry) => entry.month),
-                    )}
-                  </span>
+                  <span key={item.month}>{item.label}</span>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="chart-legend">
-            <span>
-              <i className="legend-dot expected" />
-              Expected {money(expected)}
-            </span>
-
-            <span>
-              <i className="legend-dot collected" />
-              Collected {money(collected)}
-            </span>
-
-            <strong className="chart-rate">
-              {expected
-                ? `${Math.round((collected / expected) * 100)}% collected`
-                : "0% collected"}
-            </strong>
-          </div>
         </section>
 
-        {/* OCCUPANCY */}
-
-        <section className="panel dashboard-chart-card occupancy-card">
-          <div className="panel-head">
-            <div>
-              <h2>Occupancy</h2>
-              <p>Current unit status</p>
-            </div>
-          </div>
-
-          <div className="occupancy-content occupancy-reference">
-            <div
-              className="occupancy-ring occupancy-ring-reference"
-              onMouseLeave={() => setHoveredOccupancy(null)}
-            >
-              <svg
-                className="occupancy-ring-svg"
-                viewBox="0 0 200 200"
-                aria-label="Occupancy chart"
-              >
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="72"
-                  fill="none"
-                  stroke="#dfe5e2"
-                  strokeWidth="24"
-                  onMouseEnter={() => setHoveredOccupancy("vacant")}
-                />
-
-                <circle
-                  className="occupancy-ring-progress"
-                  cx="100"
-                  cy="100"
-                  r="72"
-                  fill="none"
-                  stroke="#3d765f"
-                  strokeWidth="24"
-                  strokeLinecap="butt"
-                  strokeDasharray={occupancyCircumference}
-                  strokeDashoffset={occupancyOffset}
-                  transform="rotate(-90 100 100)"
-                  style={{ transformOrigin: "100px 100px" }}
-                  onMouseEnter={() => setHoveredOccupancy("occupied")}
-                />
-              </svg>
-
-              <div className="occupancy-ring-inner">
-                <strong>{occupancyRate}%</strong>
-                <span>occupied</span>
-              </div>
-
-              {hoveredOccupancy && (
-                <div className="occupancy-hover-tooltip">
-                  {hoveredOccupancy === "occupied"
-                    ? `Occupied : ${occupied}`
-                    : `Vacant : ${vacant}`}
-                </div>
-              )}
-            </div>
-
-            <div className="occupancy-legend">
-              <span>
-                <i className="occupancy-dot occupied" />
-                Occupied {occupied}
-              </span>
-
-              <span>
-                <i className="occupancy-dot vacant" />
-                Vacant {vacant}
-              </span>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* SECOND CONTENT ROW */}
-
-      <div className="dashboard-content-grid">
-        {/* EXPENSE BREAKDOWN */}
-
-        <section className="panel dashboard-chart-card expense-card">
+<section className="panel dashboard-chart-card expense-card">
           <div className="panel-head">
             <div>
               <h2>Expense Breakdown</h2>
-              <p>{currentMonth()} operating costs</p>
+              <p>{monthLabel(selectedMonth)} operating costs</p>
             </div>
-
             <strong className="panel-total">{money(expensesThis)}</strong>
           </div>
 
@@ -674,56 +519,35 @@ export default function Dashboard() {
             <div className="expense-chart">
               <div className="expense-plot">
                 <div className="expense-y-axis" aria-hidden="true">
-                  {[1, 0.75, 0.5, 0.25, 0].map((ratio) => (
-                    <span key={ratio}>
-                      {(() => {
-                        const value = maxExpense * ratio;
-                        if (value === 0) return "₱0";
-                        if (value >= 1000) {
-                          const thousands = value / 1000;
-                          return `₱${
-                            Number.isInteger(thousands)
-                              ? thousands
-                              : thousands
-                                  .toFixed(2)
-                                  .replace(/0+$/, "")
-                                  .replace(/\.$/, "")
-                          }k`;
-                        }
-                        return `₱${Math.round(value).toLocaleString("en-PH")}`;
-                      })()}
-                    </span>
-                  ))}
+                  {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
+                    const value = maxExpense * ratio;
+                    return (
+                      <span key={ratio}>
+                        {value >= 1000
+                          ? `₱${(value / 1000).toFixed(value % 1000 ? 1 : 0)}k`
+                          : `₱${Math.round(value).toLocaleString("en-PH")}`}
+                      </span>
+                    );
+                  })}
                 </div>
-
                 <div className="expense-chart-main">
                   <div className="expense-grid-lines" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
+                    <span /><span /><span /><span /><span />
                   </div>
-
                   <div className="expense-bars">
-                    {expenseBreakdown.slice(0, 6).map((item) => (
+                    {expenseBreakdown.map((item) => (
                       <div className="expense-column" key={item.category}>
                         <div className="expense-bar-area">
                           <div
+                            key={`${selectedMonth}-${item.category}-${item.amount}`}
                             className="expense-bar"
-                            style={{
-                              height: `${Math.max(
-                                (item.amount / maxExpense) * 100,
-                                6,
-                              )}%`,
-                            }}
+                            style={{ height: `${Math.max((item.amount / maxExpense) * 100, 6)}%` }}
                           />
                           <div className="expense-hover-tooltip">
                             <strong>{item.category}</strong>
                             <span>{money(item.amount)}</span>
                           </div>
                         </div>
-
                         <span className="expense-label">{item.category}</span>
                       </div>
                     ))}
@@ -734,25 +558,23 @@ export default function Dashboard() {
           ) : (
             <EmptyState
               icon={Receipt}
-              title="No expenses recorded yet"
-              message="Monthly expenses will appear here."
+              title="No expenses recorded"
+              message={`No expenses were recorded for ${monthLabel(selectedMonth)}.`}
               className="dashboard-empty"
             />
           )}
         </section>
+      </div>
 
-        {/* RECENT PAYMENTS */}
-
-        <section className="panel dashboard-list-card">
+      <div className="dashboard-main-grid">
+<section className="panel dashboard-list-card">
           <div className="panel-head">
             <div>
               <h2>Recent Payments</h2>
-              <p>Latest recorded transactions</p>
+              <p>{monthLabel(selectedMonth)}</p>
             </div>
-
             <Link to="/payments" className="panel-link">
-              View all
-              <ArrowUpRight size={14} />
+              View all <ArrowUpRight size={14} />
             </Link>
           </div>
 
@@ -762,9 +584,7 @@ export default function Dashboard() {
                 const tenancy = payment.billing?.tenancies;
                 const tenant = tenancy?.tenants || null;
                 const unitNumber = tenancy?.units?.unit_number || null;
-
                 const tenantName = getTenantName(tenant);
-
                 const initials = tenantName
                   .split(" ")
                   .filter(Boolean)
@@ -774,64 +594,36 @@ export default function Dashboard() {
                   .toUpperCase();
 
                 return (
-                  <div
-                    className="dashboard-payment"
-                    key={
-                      payment.id || `${payment.date}-${payment.amount}-${index}`
-                    }
-                  >
+                  <div className="dashboard-payment" key={payment.id || `${payment.date}-${payment.amount}-${index}`}>
                     <div className="dashboard-avatar">{initials || "T"}</div>
-
                     <div className="dashboard-payment-copy">
                       <strong>{tenantName}</strong>
-
-                      <span>
-                        {unitNumber ? `Unit ${unitNumber}` : " "} {" · "}
-                        {formatDate(payment.date)}
-                      </span>
+                      <span>{unitNumber ? `Unit ${unitNumber}` : "No unit"} · {formatDate(payment.date)}</span>
                     </div>
-
-                    <strong className="dashboard-payment-amount">
-                      {money(payment.amount)}
-                    </strong>
+                    <strong className="dashboard-payment-amount">{money(payment.amount)}</strong>
                   </div>
                 );
               })
             ) : (
               <EmptyState
                 icon={CreditCard}
-                title="No payments recorded yet"
-                message="Recorded payments will appear here."
+                title="No payments recorded"
+                message={`No payments were recorded for ${monthLabel(selectedMonth)}.`}
                 className="dashboard-empty"
               />
             )}
           </div>
         </section>
-      </div>
 
-      {/* THIRD CONTENT ROW */}
-
-      <div className="dashboard-content-grid">
-        {/* MAINTENANCE */}
-
-        <section className="panel dashboard-list-card">
+<section className="panel dashboard-list-card">
           <div className="panel-head">
             <div>
               <h2>Recent Maintenance</h2>
-              <p>Open and recently resolved requests</p>
+              <p>{monthLabel(selectedMonth)}</p>
             </div>
-
-            <div className="panel-head-actions">
-              {openMaintenance > 0 && (
-                <span className="dashboard-alert-pill">
-                  {openMaintenance} open
-                </span>
-              )}
-              <Link to="/maintenance" className="panel-link">
-                View all
-                <ArrowUpRight size={14} />
-              </Link>
-            </div>
+            <Link to="/maintenance" className="panel-link">
+              View all <ArrowUpRight size={14} />
+            </Link>
           </div>
 
           <div className="maintenance-list">
@@ -840,57 +632,21 @@ export default function Dashboard() {
                 <div className="maintenance-row" key={item.id}>
                   <div className="maintenance-copy">
                     <strong>{item.title || "Maintenance request"}</strong>
-
                     <span>
-                      {item.unit_number ||
-                        item.unit?.unit_number ||
-                        item.unit?.name ||
-                        "Property unit"}{" "}
-                      · {formatDate(item.reported_date || item.created_at)}
+                      {item.unit_number || item.units?.unit_number || item.unit?.unit_number || "Property-wide"} · {formatDate(item.reported_date || item.created_at)}
                     </span>
                   </div>
-
                   <StatusBadge status={item.status || "open"} />
                 </div>
               ))
             ) : (
               <EmptyState
                 icon={Wrench}
-                title="No maintenance requests yet"
-                message="Open requests will appear here."
+                title="No maintenance requests"
+                message={`No requests were reported in ${monthLabel(selectedMonth)}.`}
                 className="dashboard-empty"
               />
             )}
-          </div>
-        </section>
-
-        {/* NET INCOME */}
-
-        <section className="dashboard-net-income">
-          <div className="net-income-top">
-            <div>
-              <span className="net-income-label">Net income</span>
-
-              <strong>{money(netIncome)}</strong>
-
-              <p>Collected rent minus {currentMonth()} expenses</p>
-            </div>
-
-            <div className="net-income-icon">
-              <TrendingUp size={21} />
-            </div>
-          </div>
-
-          <div className="net-income-bottom">
-            <div>
-              <span>Collected</span>
-              <strong>{money(collected)}</strong>
-            </div>
-
-            <div>
-              <span>Expenses</span>
-              <strong>{money(expensesThis)}</strong>
-            </div>
           </div>
         </section>
       </div>

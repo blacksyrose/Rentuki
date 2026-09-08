@@ -57,6 +57,7 @@ textarea,
 }
 
 button:hover:not(:disabled),
+.secondary:hover:not(:disabled),
 a:hover,
 .panel-link:hover,
 .topbar-dropdown button:hover {
@@ -64,6 +65,7 @@ a:hover,
 }
 
 button:active:not(:disabled),
+.secondary:active:not(:disabled),
 a:active {
   transform: translateY(0);
 }
@@ -156,8 +158,12 @@ td > .empty-state {
 }
 
 @keyframes rk-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes rk-surface-enter {

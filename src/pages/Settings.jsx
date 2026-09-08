@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import {
   CheckCircle2,
   Copy,
-  Download,
   Eye,
   EyeOff,
   KeyRound,
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { db, importExpenses, importPayments } from "../services/db";
-import { csvDownload } from "../lib/utils";
 import { useAsync } from "../hooks/useData";
 import { useToast } from "../components/Toast";
 import EmptyState from "../components/EmptyState";
@@ -285,7 +283,7 @@ function validateRows(type, rows) {
   }
 }
 
-function ReportsSection() {
+function DataImportSection() {
   const tenants = useAsync(() => db.tenants.list(), []);
   const units = useAsync(() => db.units.list(), []);
   const payments = useAsync(() => db.payments.list(), []);
@@ -300,7 +298,6 @@ function ReportsSection() {
   const [loadingFile, setLoadingFile] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  const exportRows = (name, data) => csvDownload(data, `${name}.csv`);
 
   const resetImport = () => {
     setRows([]);
@@ -505,107 +502,17 @@ function ReportsSection() {
 
   return (
     <>
-      <div className="page-head report-page-head">
-        <div>
-          <h1>Reports</h1>
-          <p>
-            Export operational data and safely import existing spreadsheet
-            records.
-          </p>
-        </div>
-        <button className="secondary" onClick={() => setImportOpen(true)}>
-          <Upload size={16} /> Import CSV/XLSX
-        </button>
-      </div>
-
-      <div className="report-grid">
-        <div className="panel">
-          <h2>Tenant report</h2>
-          <p>Active and historical tenants with rental history.</p>
-          <button
-            className="secondary"
-            onClick={() =>
-              exportRows(
-                "tenant-report",
-                (tenants.data || []).map((tenant) => ({
-                  name: `${tenant.first_name} ${tenant.last_name}`.trim(),
-                  phone: tenant.phone || "",
-                  email: tenant.email || "",
-                  status: tenant.status,
-                  tenancies: tenant.tenancies?.length || 0,
-                })),
-              )
-            }
-          >
-            <Download size={15} /> Export CSV
+      <section className="panel settings-import-panel">
+        <div className="panel-head">
+          <div>
+            <h2>Data Import</h2>
+            <p>Import tenants, units, payments, or expenses from CSV/XLSX files.</p>
+          </div>
+          <button className="secondary" onClick={() => setImportOpen(true)}>
+            <Upload size={16} /> Import CSV/XLSX
           </button>
         </div>
-        <div className="panel">
-          <h2>Unit report</h2>
-          <p>Current unit inventory and default rent.</p>
-          <button
-            className="secondary"
-            onClick={() =>
-              exportRows(
-                "unit-report",
-                (units.data || []).map((unit) => ({
-                  unit: unit.unit_number,
-                  type: unit.unit_type,
-                  rent: unit.default_rent,
-                  status: unit.status,
-                })),
-              )
-            }
-          >
-            <Download size={15} /> Export CSV
-          </button>
-        </div>
-        <div className="panel">
-          <h2>Payment report</h2>
-          <p>All recorded payment transactions.</p>
-          <button
-            className="secondary"
-            onClick={() =>
-              exportRows(
-                "payment-report",
-                (payments.data || []).map((payment) => ({
-                  date: payment.payment_date,
-                  tenant:
-                    `${payment.tenants?.first_name || ""} ${payment.tenants?.last_name || ""}`.trim(),
-                  amount: payment.amount,
-                  method: payment.payment_method,
-                  reference: payment.reference_number || "",
-                  remarks: payment.notes || "",
-                })),
-              )
-            }
-          >
-            <Download size={15} /> Export CSV
-          </button>
-        </div>
-        <div className="panel">
-          <h2>Expense report</h2>
-          <p>Expenses by date, category and unit.</p>
-          <button
-            className="secondary"
-            onClick={() =>
-              exportRows(
-                "expense-report",
-                (expenses.data || []).map((expense) => ({
-                  date: expense.expense_date,
-                  category: expense.category,
-                  description: expense.description,
-                  amount: expense.amount,
-                  unit: expense.units?.unit_number || "",
-                  vendor: expense.vendor || "",
-                })),
-              )
-            }
-          >
-            <Download size={15} /> Export CSV
-          </button>
-        </div>
-      </div>
+      </section>
 
       {importOpen &&
         createPortal(
@@ -615,8 +522,7 @@ function ReportsSection() {
                 <div>
                   <h2>Import CSV/XLSX</h2>
                   <p>
-                    Preview your spreadsheet before writing anything to
-                    Supabase.
+                    Preview your spreadsheet before writing anything to Supabase.
                   </p>
                 </div>
                 <button
@@ -628,7 +534,7 @@ function ReportsSection() {
                 </button>
               </div>
               <div className="form-grid">
-                <label>
+                <label className="full-span">
                   Import type
                   <select
                     value={importType}
@@ -638,60 +544,42 @@ function ReportsSection() {
                     }}
                     disabled={importing}
                   >
-                    {IMPORT_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
+                    {IMPORT_TYPES.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
                       </option>
                     ))}
                   </select>
                 </label>
-                <label>
-                  Spreadsheet
+
+                <div className="full-span">
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".csv,.xlsx,.xls"
+                    accept=".csv,.xlsx"
                     onChange={handleFile}
                     disabled={loadingFile || importing}
                   />
-                </label>
-              </div>
-              {fileName && (
-                <div className="panel report-import-status">
-                  <strong>Selected file:</strong> {fileName}
                 </div>
-              )}
-              {loadingFile && (
-                <div className="panel report-import-status">
-                  Reading spreadsheet...
-                </div>
-              )}
-              {rows.length > 0 && (
-                <>
-                  <div className="panel report-import-status">
-                    <div className="report-import-summary">
-                      <strong>
-                        {rows.length} row{rows.length === 1 ? "" : "s"} loaded
-                      </strong>
-                      <p>Review the first rows before importing.</p>
-                      {!validation?.errors?.length && (
-                        <span className="status-badge success">
-                          <CheckCircle2 size={14} /> Valid
-                        </span>
-                      )}
-                    </div>
+
+                {fileName && (
+                  <div className="report-import-status full-span">
+                    <strong>{fileName}</strong>
+                    <span>{rows.length} row(s) loaded.</span>
                   </div>
-                  {validation?.errors?.length > 0 && (
-                    <div className="panel report-import-error">
-                      <strong>Validation errors</strong>
-                      <ul>
-                        {validation.errors.slice(0, 10).map((error) => (
-                          <li key={error}>{error}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <div className="panel report-preview">
+                )}
+
+                {validation?.errors?.length ? (
+                  <div className="report-import-error panel full-span">
+                    <strong>Validation errors</strong>
+                    {validation.errors.slice(0, 8).map((error) => (
+                      <p key={error}>{error}</p>
+                    ))}
+                  </div>
+                ) : null}
+
+                {rows.length > 0 && !validation?.errors?.length && (
+                  <div className="report-preview full-span">
                     <table>
                       <thead>
                         <tr>
@@ -711,25 +599,18 @@ function ReportsSection() {
                       </tbody>
                     </table>
                   </div>
-                </>
-              )}
+                )}
+              </div>
+
               <div className="modal-actions">
-                <button
-                  className="secondary"
-                  onClick={closeImport}
-                  disabled={importing}
-                >
+                <button className="secondary" type="button" onClick={closeImport} disabled={importing}>
                   Cancel
                 </button>
                 <button
                   className="primary"
+                  type="button"
                   onClick={importRows}
-                  disabled={
-                    importing ||
-                    loadingFile ||
-                    !rows.length ||
-                    Boolean(validation?.errors?.length)
-                  }
+                  disabled={!rows.length || Boolean(validation?.errors?.length) || importing}
                 >
                   {importing
                     ? "Importing..."
@@ -1098,7 +979,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <ReportsSection />
+      <DataImportSection />
     </div>
   );
 }
