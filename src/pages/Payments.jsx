@@ -968,10 +968,10 @@ export default function Payments() {
               }
               placeholder={
                 form.payment_type === "deposit"
-                  ? "e.g. Security deposit — 1 month"
+                  ? "Enter remarks"
                   : form.payment_type === "advance"
-                    ? "e.g. Advance rent — 1 month"
-                    : "e.g. November rent — partial payment"
+                    ? "Enter remarks"
+                    : "Enter remarks"
               }
             />
           </label>
