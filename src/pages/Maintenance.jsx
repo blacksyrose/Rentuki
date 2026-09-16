@@ -436,7 +436,7 @@ export default function Maintenance() {
 
         <ExportButton
           filename={`${tab === "maintenance" ? "maintenance" : "expense"}-report.csv`}
-          label={`${tab === "maintenance" ? "Export" : "Export"} CSV`}
+          label={`${tab === "maintenance" ? "Export" : "Export"}`}
           rows={
             tab === "maintenance"
               ? maintenanceRows.map((item) => ({

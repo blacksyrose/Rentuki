@@ -152,7 +152,7 @@ export default function Summary() {
             onChange={(e) => setMonth(e.target.value)}
           />
           <button className="secondary" onClick={exportCsv}>
-            <Download size={16} /> CSV
+            <Download size={16} /> Export
           </button>
         </div>
       </div>

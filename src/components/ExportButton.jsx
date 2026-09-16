@@ -1,7 +1,7 @@
 import { Download } from "lucide-react";
 import { csvDownload } from "../lib/utils";
 
-export default function ExportButton({ rows = [], filename, label = "Export CSV" }) {
+export default function ExportButton({ rows = [], filename, label = "Export" }) {
   const handleExport = () => {
     if (!rows.length) return;
     csvDownload(rows, filename);
