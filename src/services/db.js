@@ -456,7 +456,9 @@ export const db = {
 
       const createdByIds = [
         ...new Set(
-          records.map((payment) => payment.created_by).filter(Boolean),
+          records
+            .map((payment) => payment.created_by)
+            .filter(Boolean),
         ),
       ];
 
@@ -478,7 +480,10 @@ export const db = {
               .in("id", createdByIds),
           )) || [];
       } catch (profileError) {
-        console.warn("Unable to load payment receiver names:", profileError);
+        console.warn(
+          "Unable to load payment receiver names:",
+          profileError,
+        );
       }
 
       const profileMap = new Map(
@@ -716,6 +721,7 @@ export async function updatePayment(idOrOptions, maybePayload) {
       amount: idOrOptions.amount,
       payment_date: idOrOptions.paymentDate,
       payment_method: idOrOptions.paymentMethod,
+      received_by: idOrOptions.receivedBy,
       reference_number: idOrOptions.referenceNumber,
       notes: idOrOptions.notes,
       payment_type: idOrOptions.paymentType,
@@ -1439,7 +1445,8 @@ export async function importPayments(rows = []) {
           p_tenancy_id: tenancy.id,
           p_amount: amount,
           p_payment_type: paymentType,
-          p_billing_record_id: paymentType === "rent" ? billing.id : null,
+          p_billing_record_id:
+            paymentType === "rent" ? billing.id : null,
           p_payment_date: paymentDate,
           p_payment_method: paymentMethod,
           p_reference_number: reference,

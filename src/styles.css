@@ -2608,7 +2608,6 @@ tbody tr:hover {
   margin-top: 12px;
 }
 
-/* Filter pills: thicker border, compact size, consistent typography. */
 .notification-summary-pill,
 .notification-status {
   display: inline-flex;
@@ -2646,8 +2645,12 @@ tbody tr:hover {
   color: #326aa8;
 }
 
-/* Keep the status class available for compatibility, but do not show the
-   duplicate status badge on the right of each notification. */
+.notification-summary-pill.upcoming {
+  background: #eaf3ff;
+  border-color: #bfdbfe;
+  color: #326aa8;
+}
+
 .notification-status {
   display: none !important;
 }
@@ -2676,7 +2679,6 @@ tbody tr:hover {
   border-bottom: 0;
 }
 
-/* Icon sits at the top of the notification, aligned with the title. */
 .notification-item > .notification-icon {
   align-self: flex-start !important;
   display: grid;

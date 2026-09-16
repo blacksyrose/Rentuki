@@ -1,16 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Bell,
   Building2,
-  ClipboardPaste,
+  CheckCircle2,
+  ChevronDown,
   CircleDollarSign,
+  ClipboardPaste,
   Clock3,
+  Copy,
   Download,
   Eye,
+  FileText,
+  HelpCircle,
+  Home,
   KeyRound,
   LogOut,
+  Mail,
+  Phone,
+  QrCode,
   ReceiptText,
+  Share2,
   ShieldCheck,
-  Wrench,
+  WalletCards,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import unicodeFontUrl from "dejavu-fonts-ttf/ttf/DejaVuSans.ttf?url";
@@ -18,6 +29,63 @@ import { db } from "../services/db";
 import { currentMonth, dateLabel, money } from "../lib/utils";
 
 const STORAGE_KEY = "rentuki_tenant_portal_key";
+
+const previewSummary = {
+  tenant: {
+    id: "preview-tenant",
+    first_name: "Irish",
+    last_name: "Jane",
+    phone: "+63 912 345 6789",
+    email: "irishjane@gmail.com",
+    status: "active",
+  },
+  property_name: "Rental Apartment",
+  property_address: "Preview mode",
+  current_tenancy: {
+    id: "preview-tenancy",
+    unit_number: "9",
+    start_date: "2026-07-08",
+    monthly_rent: 4000,
+    payment_due_day: 8,
+    status: "active",
+  },
+  billing: {
+    billing_month: currentMonth(),
+    amount_due: 4000,
+    paid_amount: 4000,
+    balance: 0,
+    status: "paid",
+  },
+  billing_history: [
+    {
+      id: "preview-billing",
+      tenancy_id: "preview-tenancy",
+      billing_month: currentMonth(),
+      due_date: `${currentMonth()}-08`,
+      amount_due: 4000,
+      paid_amount: 4000,
+      balance: 0,
+      status: "paid",
+      unit_number: "9",
+      monthly_rent: 4000,
+      payment_due_day: 8,
+      latest_payment_date: `${currentMonth()}-08`,
+      payment_methods: ["GCash"],
+    },
+  ],
+  payments: [],
+  unit_history: [
+    {
+      id: "preview-history",
+      unit_number: "9",
+      monthly_rent: 4000,
+      start_date: "2026-07-08",
+      status: "active",
+    },
+  ],
+  maintenance: [],
+  expenses: [],
+};
 
 function monthLabel(value) {
   const date = new Date(`${value}-01T00:00:00`);
@@ -744,6 +812,9 @@ export default function TenantPortal() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(Boolean(accessKey));
   const [error, setError] = useState("");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [showAllPayments, setShowAllPayments] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const loadSummary = async (key) => {
     const normalized = normalizeKey(key);
@@ -991,53 +1062,22 @@ export default function TenantPortal() {
           .toLowerCase() !== "rent",
     );
 
-    const tenancyMonthlyRents = new Map(
-      history.map((item) => [
-        String(item.id || ""),
-        Number(item.monthly_rent || 0),
-      ]),
-    );
-    const standaloneTotals = standalonePayments.reduce((totals, payment) => {
-      const paymentType = String(
-        payment?.payment_type || payment?.type || "",
-      )
-        .trim()
-        .toLowerCase();
-      const key = `${payment.tenancy_id || ""}:${paymentType}`;
-      totals.set(key, (totals.get(key) || 0) + Number(payment.amount || 0));
-      return totals;
-    }, new Map());
-
-    const otherPaymentRows = standalonePayments
-      .map((payment) => {
-        const paymentType = String(
-          payment?.payment_type || payment?.type || "",
-        )
-          .trim()
-          .toLowerCase();
-        const expectedAmount =
-          tenancyMonthlyRents.get(String(payment.tenancy_id || "")) ||
-          Number(tenancy?.monthly_rent || 0);
-        const totalPaid =
-          standaloneTotals.get(`${payment.tenancy_id || ""}:${paymentType}`) ||
-          0;
-
-        return {
-          id: `payment-${payment.id}`,
-          payment_type: payment.payment_type || payment.type,
-          payment_date: payment.payment_date,
-          billing_month: payment.billing_month,
-          unit_number: payment.unit_number,
-          amount_due: expectedAmount,
-          paid_amount: totalPaid,
-          balance: Math.max(expectedAmount - totalPaid, 0),
-          payment_methods: payment.payment_method
-            ? [payment.payment_method]
-            : [],
-          latest_payment: payment,
-          row_kind: "standalone",
-        };
-      });
+    const otherPaymentRows = standalonePayments.map((payment) => ({
+      id: `payment-${payment.id}`,
+      payment_type: payment.payment_type || payment.type,
+      payment_date: payment.payment_date,
+      billing_month: payment.billing_month,
+      unit_number: payment.unit_number,
+      // Deposits and advances are standalone transactions. They are not
+      // monthly rent obligations, so they must not inherit monthly_rent as
+      // an artificial amount due/balance.
+      amount_due: null,
+      paid_amount: Number(payment.amount || 0),
+      balance: 0,
+      payment_methods: payment.payment_method ? [payment.payment_method] : [],
+      latest_payment: payment,
+      row_kind: "standalone",
+    }));
 
     return [...billingRows, ...otherPaymentRows].sort((first, second) => {
       const secondDate = String(
@@ -1047,7 +1087,7 @@ export default function TenantPortal() {
 
       return secondDate.localeCompare(firstDate);
     });
-  }, [billingHistory, history, payments, tenancy?.monthly_rent]);
+  }, [billingHistory, payments]);
 
   if (!isPreview && (!accessKey || !summary)) {
     return (
@@ -1136,20 +1176,64 @@ export default function TenantPortal() {
   }
 
   const firstName = tenant.first_name || tenant.full_name || "Tenant";
+  const tenantName = [tenant.first_name, tenant.last_name].filter(Boolean).join(" ") || firstName;
+  const initials = tenantName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "T";
+  const propertyName = portalSummary.property_name || "Rental Apartment";
+  const propertyAddress = portalSummary.property_address || "";
+  const propertyPhone = portalSummary.property_phone || "";
+  const qrUrl = portalSummary.payment_qr_url || portalSummary.qr_code_url || "";
+  const contractDocument = portalSummary.contract_document || portalSummary.contract_number || "";
+  const paymentRowsVisible = paymentRows.slice(0, 6);
+  const historyVisible = showAllHistory ? history : history.slice(0, 3);
+  const availableMethods = Array.from(
+    new Set(payments.map((payment) => formatPaymentMethod(payment.payment_method)).filter((method) => method && method !== "—")),
+  );
 
-  const propertyName = portalSummary.property_name || "Rentuki";
+  const copyTenantId = async () => {
+    if (!tenant?.id) return;
+    try {
+      await navigator.clipboard.writeText(String(tenant.id));
+    } catch {
+      // Clipboard access is optional.
+    }
+  };
 
-  const propertyHeader = portalSummary.property_address || propertyName;
+  const shareQr = async () => {
+    if (!qrUrl) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${propertyName} payment QR`, url: qrUrl });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(qrUrl);
+      }
+    } catch {
+      // Sharing can be cancelled by the user.
+    }
+  };
+
+  const saveQr = () => {
+    if (!qrUrl) return;
+    const link = document.createElement("a");
+    link.href = qrUrl;
+    link.download = `${propertyName.replace(/[^a-z0-9]+/gi, "-")}-payment-qr`;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
 
   return (
     <div className="portal-page portal-dashboard-page">
       <header className="portal-topbar">
         <div className="portal-topbar-inner">
           <div className="portal-brand">
-            <div className="portal-brand-mark">
-              <Building2 size={21} />
-            </div>
-
+            <div className="portal-brand-mark"><Building2 size={20} /></div>
             <div>
               <strong>{propertyName}</strong>
               <span>Tenant Portal</span>
@@ -1157,447 +1241,161 @@ export default function TenantPortal() {
           </div>
 
           <div className="portal-topbar-actions">
-            <button className="portal-signout" onClick={signOut}>
-              <LogOut size={16} />
-              Sign out
+            <button type="button" className="portal-icon-button" aria-label="Notifications" title="Notifications">
+              <Bell size={18} />
             </button>
+            <div className="portal-profile-wrap">
+              <button
+                type="button"
+                className="portal-profile-button"
+                onClick={() => setProfileMenuOpen((value) => !value)}
+                aria-expanded={profileMenuOpen}
+              >
+                <span className="portal-avatar">{initials}</span>
+                <span className="portal-profile-name">{tenantName}</span>
+                <ChevronDown size={15} />
+              </button>
+              {profileMenuOpen && (
+                <div className="portal-profile-menu">
+                  <div className="portal-profile-menu-head">
+                    <strong>{tenantName}</strong>
+                    <span>{tenant.email || "Tenant account"}</span>
+                  </div>
+                  <button type="button" onClick={signOut}>
+                    <LogOut size={15} />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="portal-content portal-content-simple">
-        <section className="portal-hero portal-hero-simple">
-          <div className="portal-welcome">
-            <span>Welcome back</span>
-
-            <strong>{firstName}</strong>
+      <main className="portal-content portal-content-modern">
+        <section className="portal-welcome-banner">
+          <div className="portal-welcome-copy">
+            <span>Welcome back,</span>
+            <h1>{firstName}!</h1>
+            <p>Here's an overview of your rental account.</p>
           </div>
-
-          <div>
-            <span>Current Unit</span>
-
-            <Building2 size={17} />
-
-            <strong>
-              {tenancy?.unit_number
-                ? `Unit ${tenancy.unit_number}`
-                : "No active unit"}
-            </strong>
-
-            <small>
-              {tenancy?.start_date
-                ? `Since ${dateLabel(tenancy.start_date)}`
-                : "Rental history remains available below"}
-            </small>
-          </div>
-
-          <div>
-            <span>Monthly Rent</span>
-
-            <CircleDollarSign size={17} />
-
-            <strong>{money(tenancy?.monthly_rent || 0)}</strong>
-
-            <small>
-              {tenancy?.payment_due_day
-                ? `Due every ${tenancy.payment_due_day}`
-                : "No active tenancy"}
-            </small>
-          </div>
-
-          <div>
-            <span>Current Balance ({monthLabel(billingMonth)})</span>
-
-            <CircleDollarSign size={17} />
-
-            <strong>{money(balance)}</strong>
-
-            <small
-              className={`portal-balance-status ${status
-                .toLowerCase()
-                .replaceAll(" ", "-")}`}
-            >
-              <span /> {status}
-            </small>
+          <div className="portal-welcome-avatar">{initials}</div>
+          <div className="portal-welcome-art" aria-hidden="true">
+            <Home size={120} strokeWidth={0.75} />
           </div>
         </section>
 
-        <section className="portal-overview-stats">
-          <div className="portal-overview-stat">
-            <span>Total Payments</span>
+        <div className="portal-dashboard-grid">
+          <div className="portal-dashboard-main">
+            <section className="portal-card portal-tenant-info-card">
+              <div className="portal-section-head">
+                <div>
+                  <span className="portal-eyebrow">ACCOUNT</span>
+                  <h2>Tenant Information</h2>
+                </div>
+                <span className={`portal-status-badge ${String(tenant.status || "active").toLowerCase()}`}>
+                  <span /> {String(tenant.status || "active").replace(/_/g, " ")}
+                </span>
+              </div>
 
-            <strong>{payments.length}</strong>
+              <div className="portal-tenant-grid">
+                <div className="portal-info-item"><span className="portal-info-icon"><Building2 size={16} /></span><div><small>Name</small><strong>{tenantName}</strong></div></div>
+                <div className="portal-info-item"><span className="portal-info-icon"><Phone size={16} /></span><div><small>Phone</small><strong>{tenant.phone || "—"}</strong></div></div>
+                <div className="portal-info-item"><span className="portal-info-icon"><Mail size={16} /></span><div><small>Email</small><strong>{tenant.email || "—"}</strong></div></div>
+                <div className="portal-info-item"><span className="portal-info-icon"><FileText size={16} /></span><div><small>Tenant ID</small><strong>{tenant.id ? `${String(tenant.id).slice(0, 8)}…` : "—"}</strong></div><button type="button" className="portal-inline-icon" onClick={copyTenantId} title="Copy tenant ID" aria-label="Copy tenant ID"><Copy size={13} /></button></div>
+                <div className="portal-info-item"><span className="portal-info-icon"><ReceiptText size={16} /></span><div><small>Contract / Document</small><strong>{contractDocument || "Not assigned"}</strong></div></div>
+              </div>
+            </section>
 
-            <small>All recorded transactions</small>
+            <section className="portal-summary-grid">
+              <article className="portal-summary-card"><span className="portal-summary-icon"><Home size={18} /></span><div><small>Unit No.</small><strong>{tenancy?.unit_number ? `Unit ${tenancy.unit_number}` : "—"}</strong><span>{tenancy?.start_date ? `Since ${dateLabel(tenancy.start_date)}` : "No active unit"}</span></div></article>
+              <article className="portal-summary-card"><span className="portal-summary-icon"><CircleDollarSign size={18} /></span><div><small>Monthly Rent</small><strong>{money(tenancy?.monthly_rent || 0)}</strong><span>{tenancy?.payment_due_day ? `Due every ${tenancy.payment_due_day}` : "No due date"}</span></div></article>
+              <article className="portal-summary-card"><span className={`portal-summary-icon ${status.toLowerCase()}`}><WalletCards size={18} /></span><div><small>Current Balance</small><strong>{money(balance)}</strong><span className={`portal-summary-status ${status.toLowerCase().replace(/\s+/g, "-")}`}><i />{status}</span></div></article>
+              <article className="portal-summary-card"><span className="portal-summary-icon soft"><ReceiptText size={18} /></span><div><small>Total Payments</small><strong>{payments.length}</strong><span>All recorded transactions</span></div></article>
+              <article className="portal-summary-card"><span className="portal-summary-icon soft"><CheckCircle2 size={18} /></span><div><small>Total Paid</small><strong>{money(paid)}</strong><span>Across rental history</span></div></article>
+              <article className="portal-summary-card"><span className="portal-summary-icon soft"><WalletCards size={18} /></span><div><small>Total Balance</small><strong>{money(totalUnpaid)}</strong><span>Total outstanding balance</span></div></article>
+            </section>
+
+            <section className="portal-card portal-payments-modern">
+              <div className="portal-section-head">
+                <div><span className="portal-eyebrow">TRANSACTIONS</span><h2>Payment History</h2><p>Rent, advance, and deposit payments, balances, statuses, and receipts.</p></div>
+                {paymentRows.length > 6 && <button type="button" className="portal-text-button" onClick={() => setShowAllPayments((value) => !value)}>{showAllPayments ? "Show Less" : "View All"}</button>}
+              </div>
+              <div className="portal-table-wrap portal-table-modern-wrap">
+                <table className="portal-table portal-table-modern">
+                  <thead><tr><th>Payment Date</th><th>Rent Period</th><th>Unit</th><th>Type</th><th>Amount Due</th><th>Paid</th><th>Balance</th><th>Status</th><th>Method</th><th>Receipt</th></tr></thead>
+                  <tbody>
+                    {(showAllPayments ? paymentRows : paymentRowsVisible).map((record) => {
+                      const standalone = record.row_kind === "standalone";
+                      const rowStatus = standalone ? "Paid" : getBillingRecordStatus(record, record.paid_amount);
+                      const receiptPayments = standalone ? [record.latest_payment].filter(Boolean) : payments.filter((payment) => record?.id && payment?.billing_record_id && String(payment.billing_record_id) === String(record.id)).sort((a, b) => String(b.payment_date || "").localeCompare(String(a.payment_date || "")));
+                      const methods = Array.isArray(record.payment_methods) ? record.payment_methods.filter(Boolean) : [];
+                      return <tr key={record.id}>
+                        <td>{record.latest_payment_date || record.payment_date ? dateLabel(record.latest_payment_date || record.payment_date) : "—"}</td>
+                        <td>{record.billing_month ? monthLabel(String(record.billing_month).slice(0, 7)) : "—"}</td>
+                        <td>{record.unit_number ? `Unit ${record.unit_number}` : "—"}</td>
+                        <td><span className={`portal-payment-pill type ${paymentTypeClass(record.payment_type)}`}>{formatPaymentType(record.payment_type)}</span></td>
+                        <td><strong>{record.amount_due == null ? "—" : money(record.amount_due)}</strong></td>
+                        <td><strong>{money(record.paid_amount)}</strong></td>
+                        <td><strong className={record.balance > 0 ? "portal-billing-balance-due" : "portal-billing-balance-paid"}>{record.balance == null ? "—" : money(record.balance)}</strong></td>
+                        <td><span className={`portal-payment-pill status ${billingStatusClass(rowStatus)}`}>{rowStatus}</span></td>
+                        <td>{methods.length ? <div className="portal-billing-methods">{methods.map((method) => <span key={method} className={`portal-payment-pill method ${paymentMethodClass(method)}`}>{formatPaymentMethod(method)}</span>)}</div> : "—"}</td>
+                        <td>{receiptPayments.length === 1 ? <TenantReceiptActions payment={receiptPayments[0]} tenant={tenant} propertyHeader={propertyAddress || propertyName} payments={payments} expectedAmount={record.amount_due || 0} /> : receiptPayments.length > 1 ? <details className="portal-receipt-list"><summary>Receipts ({receiptPayments.length})</summary><div className="portal-receipt-list-items">{receiptPayments.map((payment) => <div className="portal-receipt-list-item" key={payment.id}><span>{dateLabel(payment.payment_date)} · {money(payment.amount)}</span><TenantReceiptActions payment={payment} tenant={tenant} propertyHeader={propertyAddress || propertyName} payments={payments} expectedAmount={record.amount_due || 0} /></div>)}</div></details> : "—"}</td>
+                      </tr>;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {!paymentRows.length && <div className="portal-empty"><Clock3 size={20} /><strong>No payment history yet</strong><span>Recorded rental transactions will appear here.</span></div>}
+            </section>
+
+            <section className="portal-card portal-unit-history-modern">
+              <div className="portal-section-head"><div><span className="portal-eyebrow">RENTAL HISTORY</span><h2>Unit History</h2><p>Previous and current rental assignments remain available for your records.</p></div>{history.length > 0 && <span className="portal-history-count">{history.length} {history.length === 1 ? "assignment" : "assignments"}</span>}</div>
+              <div className="portal-timeline">
+                {historyVisible.map((item, index) => { const isCurrent = index === 0 && !item.end_date; return <div className={`portal-timeline-item ${isCurrent ? "current" : ""}`} key={item.id}>
+                  <span className="portal-timeline-dot" />
+                  <div className="portal-timeline-card"><div><strong>Unit {item.unit_number}</strong><span>{dateLabel(item.start_date)} — {item.end_date ? dateLabel(item.end_date) : "Present"}</span></div><div className="portal-history-rent"><strong>{money(item.monthly_rent)} <small>/ month</small></strong><span className={isCurrent ? "current" : ""}>{isCurrent ? "Current" : item.status || "Past"}</span></div></div>
+                </div>; })}
+              </div>
+              {!history.length && <div className="portal-empty"><Building2 size={20} /><strong>No rental history yet</strong><span>Your unit assignments will appear here.</span></div>}
+              {history.length > 3 && <button type="button" className="portal-text-button portal-history-toggle" onClick={() => setShowAllHistory((value) => !value)}>{showAllHistory ? "Show Less" : "View Full History"}</button>}
+            </section>
+
+            {(maintenance.length > 0 || expenses.length > 0) && (
+              <section className="portal-card portal-activity-modern">
+                <div className="portal-section-head"><div><span className="portal-eyebrow">ACCOUNT ACTIVITY</span><h2>Maintenance & Expenses</h2><p>Existing records related to your tenancy.</p></div></div>
+                <div className="portal-activity-grid">
+                  {maintenance.length > 0 && <div className="portal-activity-column"><h3>Maintenance</h3><div className="portal-activity-list">{maintenance.map((item) => <div className="portal-activity-item" key={item.id}><div><strong>{item.title || item.issue || item.description || "Maintenance request"}</strong><span>{item.reported_date ? dateLabel(item.reported_date) : "Date not recorded"}{item.units?.unit_number || item.unit_number ? ` · Unit ${item.units?.unit_number || item.unit_number}` : ""}</span></div><span className="portal-activity-status">{item.status || "Recorded"}</span></div>)}</div></div>}
+                  {expenses.length > 0 && <div className="portal-activity-column"><h3>Expenses</h3><div className="portal-activity-list">{expenses.map((item) => <div className="portal-activity-item" key={item.id}><div><strong>{item.description || item.category || item.name || "Expense"}</strong><span>{item.expense_date ? dateLabel(item.expense_date) : "Date not recorded"}{item.units?.unit_number || item.unit_number ? ` · Unit ${item.units?.unit_number || item.unit_number}` : ""}</span></div><strong className="portal-expense-amount">{money(item.amount)}</strong></div>)}</div></div>}
+                </div>
+              </section>
+            )}
           </div>
 
-          <div className="portal-overview-stat">
-            <span>Total Paid</span>
+          <aside className="portal-dashboard-sidebar">
+            <section className="portal-card portal-qr-card">
+              <div className="portal-section-head"><div><span className="portal-eyebrow">QUICK PAYMENT</span><h2>Pay Your Rent</h2><p>Scan the QR code to pay directly to your landlord.</p></div></div>
+              <div className="portal-qr-frame">
+                {qrUrl ? <img src={qrUrl} alt="Rental payment QR code" /> : <div className="portal-qr-empty"><QrCode size={54} /><strong>QR payment not configured</strong><span>Your landlord's payment QR code will appear here when it is added to the property settings.</span></div>}
+              </div>
+              <div className="portal-qr-brand"><strong>{propertyName}</strong><span>{propertyAddress || "Secure rental payment"}</span></div>
+              {availableMethods.length > 0 && <div className="portal-payment-methods">{availableMethods.map((method) => <span key={method}>{method}</span>)}</div>}
+              <div className="portal-info-callout"><ShieldCheck size={15} /><span>After payment, your transaction will be verified and reflected in your payment history.</span></div>
+              <div className="portal-qr-actions"><button type="button" className="portal-primary portal-qr-primary" onClick={saveQr} disabled={!qrUrl}><Download size={15} /> Save QR Code</button><button type="button" className="portal-secondary" onClick={shareQr} disabled={!qrUrl}><Share2 size={15} /> Share QR Code</button></div>
+            </section>
 
-            <strong>{money(paid)}</strong>
+            <section className="portal-card portal-support-card">
+              <div className="portal-support-icon"><HelpCircle size={19} /></div>
+              <div><span className="portal-eyebrow">NEED HELP?</span><h2>Contact your landlord</h2><p>For payment concerns, maintenance requests, or account questions.</p></div>
+              {propertyPhone ? <a href={`tel:${propertyPhone}`} className="portal-secondary portal-support-button"><Phone size={15} /> {propertyPhone}</a> : <span className="portal-support-unavailable">Contact details are not configured.</span>}
+            </section>
 
-            <small>Across your rental history</small>
-          </div>
-
-          <div className="portal-overview-stat">
-            <span>Total Balance</span>
-            <strong>{money(totalUnpaid)}</strong>
-            <small>Total unpaid across rental history</small>
-          </div>
-        </section>
-
-        <div className="portal-summary-disclaimer">
-          <strong>Notice:</strong> Records in this portal may be
-          incomplete or inaccurate due to unrecorded transactions. Please
-          contact your landlord if you notice any discrepancies.
+            {error && <div className="portal-error portal-dashboard-error">{error}</div>}
+            <div className="portal-summary-disclaimer"><strong>Notice:</strong> Records in this portal may be incomplete or inaccurate due to unrecorded transactions. Please contact your landlord if you notice any discrepancies.</div>
+          </aside>
         </div>
 
-        {error && (
-          <div className="portal-error portal-dashboard-error">{error}</div>
-        )}
-
-        <section className="portal-card portal-payments-card portal-payments-simple">
-          <div className="portal-card-head">
-            <div className="portal-card-icon">
-              <ReceiptText size={18} />
-            </div>
-
-            <div>
-              <h2>Payment History</h2>
-              <p>
-                Rent, advance, and deposit payments, balances, statuses, and
-                receipts.
-              </p>
-            </div>
-          </div>
-
-          <div className="portal-table-wrap">
-            <table className="portal-table portal-billing-history-table">
-              <thead>
-                <tr>
-                  <th>Payment date</th>
-                  <th>Rent period</th>
-                  <th>Unit</th>
-                  <th>Type</th>
-                  <th>Amount due</th>
-                  <th>Paid</th>
-                  <th>Balance</th>
-                  <th>Status</th>
-                  <th>Method</th>
-                  <th>Receipt</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {paymentRows.map((record) => {
-                  const isStandalonePayment = record.row_kind === "standalone";
-                  const rowStatus = isStandalonePayment
-                    ? record.balance <= 0
-                      ? "Paid"
-                      : record.paid_amount > 0
-                        ? "Partially Paid"
-                        : "Due"
-                    : getBillingRecordStatus(record, record.paid_amount);
-
-                  const receiptPayments = isStandalonePayment
-                    ? [record.latest_payment].filter(Boolean)
-                    : payments
-                        .filter(
-                          (payment) =>
-                            record?.id &&
-                            payment?.billing_record_id &&
-                            String(payment.billing_record_id) === String(record.id),
-                        )
-                        .sort((a, b) =>
-                          String(b.payment_date || "").localeCompare(
-                            String(a.payment_date || ""),
-                          ),
-                        );
-
-                  const methods = Array.isArray(record.payment_methods)
-                    ? record.payment_methods.filter(Boolean)
-                    : [];
-
-                  return (
-                    <tr key={record.id}>
-                      <td>
-                        {record.latest_payment_date || record.payment_date
-                          ? dateLabel(
-                              record.latest_payment_date || record.payment_date,
-                            )
-                          : "—"}
-                      </td>
-
-                      <td>
-                        {record.billing_month
-                          ? monthLabel(String(record.billing_month).slice(0, 7))
-                          : "—"}
-                      </td>
-
-                      <td>
-                        {record.unit_number
-                          ? `Unit ${record.unit_number}`
-                          : "—"}
-                      </td>
-
-                      <td>
-                        <span
-                          className={`portal-payment-pill type ${paymentTypeClass(
-                            record.payment_type,
-                          )}`}
-                        >
-                          {formatPaymentType(record.payment_type)}
-                        </span>
-                      </td>
-
-                      <td>
-                        <strong>{money(record.amount_due)}</strong>
-                      </td>
-
-                      <td>
-                        <strong>{money(record.paid_amount)}</strong>
-                      </td>
-
-                      <td>
-                        <strong
-                          className={
-                            record.balance > 0
-                              ? "portal-billing-balance-due"
-                              : "portal-billing-balance-paid"
-                          }
-                        >
-                          {money(record.balance)}
-                        </strong>
-                      </td>
-
-                      <td>
-                        <span
-                          className={`portal-payment-pill status ${billingStatusClass(
-                            rowStatus,
-                          )}`}
-                        >
-                          {rowStatus}
-                        </span>
-                      </td>
-
-                      <td>
-                        {methods.length ? (
-                          <div className="portal-billing-methods">
-                            {methods.map((method) => (
-                              <span
-                                key={method}
-                                className={`portal-payment-pill method ${paymentMethodClass(
-                                  method,
-                                )}`}
-                              >
-                                {formatPaymentMethod(method)}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-
-                      <td>
-                        {receiptPayments.length === 1 ? (
-                          <TenantReceiptActions
-                            payment={receiptPayments[0]}
-                            tenant={tenant}
-                            propertyHeader={propertyHeader}
-                            payments={payments}
-                            expectedAmount={record.amount_due}
-                          />
-                        ) : receiptPayments.length > 1 ? (
-                          <details className="portal-receipt-list">
-                            <summary>Receipts ({receiptPayments.length})</summary>
-                            <div className="portal-receipt-list-items">
-                              {receiptPayments.map((payment) => (
-                                <div className="portal-receipt-list-item" key={payment.id}>
-                                  <span>
-                                    {dateLabel(payment.payment_date)} · {money(payment.amount)}
-                                  </span>
-                                  <TenantReceiptActions
-                                    payment={payment}
-                                    tenant={tenant}
-                                    propertyHeader={propertyHeader}
-                                    payments={payments}
-                                    expectedAmount={record.amount_due}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {!paymentRows.length && (
-            <div className="portal-empty">
-              <Clock3 size={20} />
-              <strong>No billing records found</strong>
-              <span>
-                Monthly rental billing records will appear here once created.
-              </span>
-            </div>
-          )}
-        </section>
-
-        {(maintenance.length > 0 || expenses.length > 0) && (
-          <section className="portal-card portal-activity-card">
-            <div className="portal-card-head">
-              <div className="portal-card-icon soft-blue">
-                <Wrench size={18} />
-              </div>
-
-              <div>
-                <h2>Maintenance & expenses</h2>
-
-                <p>
-                  Records related to your tenancy that are available in the
-                  system.
-                </p>
-              </div>
-            </div>
-
-            <div className="portal-activity-grid">
-              {maintenance.length > 0 && (
-                <div className="portal-activity-column">
-                  <h3>Maintenance</h3>
-
-                  <div className="portal-activity-list">
-                    {maintenance.map((item) => (
-                      <div className="portal-activity-item" key={item.id}>
-                        <div>
-                          <strong>
-                            {item.title ||
-                              item.issue ||
-                              item.description ||
-                              "Maintenance request"}
-                          </strong>
-
-                          <span>
-                            {item.reported_date
-                              ? dateLabel(item.reported_date)
-                              : "Date not recorded"}
-
-                            {item.units?.unit_number || item.unit_number
-                              ? ` · Unit ${
-                                  item.units?.unit_number || item.unit_number
-                                }`
-                              : ""}
-                          </span>
-                        </div>
-
-                        <span className="portal-activity-status">
-                          {item.status || "Recorded"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {expenses.length > 0 && (
-                <div className="portal-activity-column">
-                  <h3>Expenses</h3>
-
-                  <div className="portal-activity-list">
-                    {expenses.map((item) => (
-                      <div className="portal-activity-item" key={item.id}>
-                        <div>
-                          <strong>
-                            {item.description ||
-                              item.category ||
-                              item.name ||
-                              "Expense"}
-                          </strong>
-
-                          <span>
-                            {item.expense_date
-                              ? dateLabel(item.expense_date)
-                              : "Date not recorded"}
-
-                            {item.units?.unit_number || item.unit_number
-                              ? ` · Unit ${
-                                  item.units?.unit_number || item.unit_number
-                                }`
-                              : ""}
-                          </span>
-                        </div>
-
-                        <strong className="portal-expense-amount">
-                          {money(item.amount)}
-                        </strong>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        <section className="portal-card portal-history-card">
-          <div className="portal-card-head">
-            <div className="portal-card-icon soft-purple">
-              <Building2 size={18} />
-            </div>
-
-            <div>
-              <h2>Unit History</h2>
-
-              <p>
-                Previous rental assignments remain available for your records.
-              </p>
-            </div>
-          </div>
-
-          <div className="portal-history-list">
-            {history.map((item) => (
-              <div className="portal-history-item" key={item.id}>
-                <div>
-                  <strong>Unit {item.unit_number}</strong>
-
-                  <span>
-                    {dateLabel(item.start_date)} —{" "}
-                    {item.end_date ? dateLabel(item.end_date) : "Present"}
-                  </span>
-                </div>
-
-                <div className="portal-history-rent">
-                  <strong>{money(item.monthly_rent)}</strong>
-
-                  <span>{item.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {!history.length && (
-            <div className="portal-empty">
-              <Building2 size={20} />
-
-              <strong>No rental history yet</strong>
-
-              <span>Your unit assignments will appear here.</span>
-            </div>
-          )}
-        </section>
-
-        <footer className="portal-support-note">
-          <strong>
-            For payment concerns, maintenance requests, or account questions,
-            contact your landlord.
-          </strong>
-        </footer>
+        <footer className="portal-footer-modern"><span>© {new Date().getFullYear()} {propertyName}. All rights reserved.</span><div><span>Privacy Policy</span><span>Terms of Service</span><span>Contact Us</span></div></footer>
       </main>
     </div>
   );
